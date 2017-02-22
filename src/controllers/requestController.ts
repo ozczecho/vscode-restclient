@@ -2,6 +2,7 @@
 
 import { window, workspace, commands, Uri, StatusBarItem, StatusBarAlignment, ViewColumn, Disposable, TextDocument, Range } from 'vscode';
 import { RequestParserFactory } from '../models/requestParserFactory';
+import { EnvironmentController } from './environmentController';
 import { HttpClient } from '../httpClient';
 import { HttpRequest } from '../models/httpRequest';
 import { SerializedHttpRequest } from '../models/httpRequest';
@@ -15,6 +16,7 @@ import { ResponseStore } from '../responseStore';
 import { Selector } from '../selector';
 import * as Constants from '../constants';
 import { EOL } from 'os';
+import * as CryptoJS from 'crypto-js';
 
 const elegantSpinner = require('elegant-spinner');
 const spinner = elegantSpinner();
@@ -105,9 +107,29 @@ export class RequestController {
         this._durationStatusBarItem.tooltip = null;
     }
 
+    private async setSignature(httpRequest: HttpRequest, privateKey: string) {
+        console.log('Start...');
+        if (httpRequest.headers['X-WC-API-SIGNATURE'] != null){
+            var req = decodeURIComponent(httpRequest.url);
+            console.log('url: ' + req);
+
+            var encoded = CryptoJS.enc.Utf8.parse(req);
+            var hash = CryptoJS.HmacSHA256(encoded, privateKey);
+            var base64 = CryptoJS.enc.Base64.stringify(hash);
+
+            httpRequest.headers['X-WC-API-SIGNATURE'] = base64;
+            console.log('64: ' + base64);
+        }
+    }
+
     private async runCore(httpRequest: HttpRequest) {
         let requestId = uuid.v4();
         RequestStore.add(<string>requestId, httpRequest);
+
+        let customVariables = await EnvironmentController.getCustomVariables();
+        if (customVariables['mustSign'] != null && customVariables['mustSign'] == "true"){
+            await this.setSignature(httpRequest, customVariables['private']);
+        }
 
         // clear status bar
         this.setSendingProgressStatusText();
