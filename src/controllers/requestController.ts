@@ -109,7 +109,7 @@ export class RequestController {
 
     private async setSignature(httpRequest: HttpRequest, privateKey: string) {
         console.log('Start...');
-        if (httpRequest.headers['X-WC-API-SIGNATURE'] != null){
+        if (httpRequest.headers != null && httpRequest.headers['X-WC-API-SIGNATURE'] != null){
             var req = decodeURIComponent(httpRequest.url);
             console.log('url: ' + req);
 
@@ -127,7 +127,7 @@ export class RequestController {
         RequestStore.add(<string>requestId, httpRequest);
 
         let customVariables = await EnvironmentController.getCustomVariables();
-        if (customVariables['mustSign'] != null && customVariables['mustSign'] == "true"){
+        if (customVariables != null && customVariables['mustSign'] != null && customVariables['mustSign'] == "true"){
             await this.setSignature(httpRequest, customVariables['private']);
         }
 
