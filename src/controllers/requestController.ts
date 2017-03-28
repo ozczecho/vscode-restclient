@@ -5,10 +5,12 @@ import { RequestParserFactory } from '../models/requestParserFactory';
 import { EnvironmentController } from './environmentController';
 import { HttpClient } from '../httpClient';
 import { HttpRequest } from '../models/httpRequest';
+import { HttpResponse } from '../models/httpResponse';
 import { SerializedHttpRequest } from '../models/httpRequest';
 import { RestClientSettings } from '../models/configurationSettings';
 import { PersistUtility } from '../persistUtility';
 import { HttpResponseTextDocumentContentProvider } from '../views/httpResponseTextDocumentContentProvider';
+import { UntitledFileContentProvider } from '../views/responseUntitledFileContentProvider';
 import { Telemetry } from '../telemetry';
 import { VariableProcessor } from '../variableProcessor';
 import { RequestStore } from '../requestStore';
@@ -41,7 +43,7 @@ export class RequestController {
         this._restClientSettings = new RestClientSettings();
         this._httpClient = new HttpClient(this._restClientSettings);
 
-        this._responseTextProvider = new HttpResponseTextDocumentContentProvider(null, this._restClientSettings);
+        this._responseTextProvider = new HttpResponseTextDocumentContentProvider(this._restClientSettings);
         this._registration = workspace.registerTextDocumentContentProvider('rest-response', this._responseTextProvider);
 
         workspace.onDidCloseTextDocument((params) => this.onDidCloseTextDocument(params));
@@ -144,28 +146,33 @@ export class RequestController {
             }
 
             this.clearSendProgressStatusText();
-            this._durationStatusBarItem.command = null;
-            this._durationStatusBarItem.text = ` $(clock) ${response.elapsedMillionSeconds}ms`;
-            this._durationStatusBarItem.tooltip = 'Duration';
+            this.formatDurationStatusBar(response);
 
-            this._sizeStatusBarItem.text = ` $(database) ${filesize(response.bodySizeInBytes)}`;
-            this._sizeStatusBarItem.tooltip = 'Body Size';
+            this.formatSizeStatusBar(response);
             this._sizeStatusBarItem.show();
-
-            this._responseTextProvider.response = response;
-            this._responseTextProvider.update(this._previewUri);
 
             let previewUri = this.generatePreviewUri();
             ResponseStore.add(previewUri.toString(), response);
+
+            this._responseTextProvider.update(this._previewUri);
+
             try {
-                await commands.executeCommand('vscode.previewHtml', previewUri, ViewColumn.Two, `Response(${response.elapsedMillionSeconds}ms)`);
+                if (this._restClientSettings.previewResponseInUntitledDocument) {
+                    UntitledFileContentProvider.createHttpResponseUntitledFile(
+                        response,
+                        this._restClientSettings.showResponseInDifferentTab,
+                        this._restClientSettings.previewResponseSetUntitledDocumentLanguageByContentType,
+                        this._restClientSettings.includeAdditionalInfoInResponse
+                    );
+                } else {
+                    await commands.executeCommand('vscode.previewHtml', previewUri, ViewColumn.Two, `Response(${response.elapsedMillionSeconds}ms)`);
+                }
             } catch (reason) {
                 window.showErrorMessage(reason);
             }
 
             // persist to history json file
-            let serializedRequest = <SerializedHttpRequest>httpRequest;
-            serializedRequest.startTime = Date.now();
+            let serializedRequest = SerializedHttpRequest.convertFromHttpRequest(httpRequest);
             await PersistUtility.saveRequest(serializedRequest);
         } catch (error) {
             // check cancel
@@ -219,10 +226,33 @@ export class RequestController {
 
     private onDidCloseTextDocument(doc: TextDocument): void {
         // Remove the status bar associated with the response preview uri
+        if (this._restClientSettings.showResponseInDifferentTab) {
+            return;
+        }
+
         ResponseStore.remove(doc.uri.toString());
         if (ResponseStore.size === 0) {
             this._durationStatusBarItem.hide();
             this._sizeStatusBarItem.hide();
         }
+    }
+
+    private formatDurationStatusBar(response: HttpResponse) {
+        this._durationStatusBarItem.command = null;
+        this._durationStatusBarItem.text = ` $(clock) ${response.elapsedMillionSeconds}ms`;
+        // this._durationStatusBarItem.tooltip = `Duration:${EOL}Total: ${response`;
+        this._durationStatusBarItem.tooltip = [
+            'Duration:',
+            `Socket: ${response.timingPhases.wait.toFixed(1)}ms`,
+            `DNS: ${response.timingPhases.dns.toFixed(1)}ms`,
+            `TCP: ${response.timingPhases.tcp.toFixed(1)}ms`,
+            `FirstByte: ${response.timingPhases.firstByte.toFixed(1)}ms`,
+            `Download: ${response.timingPhases.download.toFixed(1)}ms`
+        ].join(EOL);
+    }
+
+    private formatSizeStatusBar(response: HttpResponse) {
+        this._sizeStatusBarItem.text = ` $(database) ${filesize(response.bodySizeInBytes + response.headersSizeInBytes)}`;
+        this._sizeStatusBarItem.tooltip = `Response Size:${EOL}Headers: ${filesize(response.headersSizeInBytes)}${EOL}Body: ${filesize(response.bodySizeInBytes)}`;
     }
 }

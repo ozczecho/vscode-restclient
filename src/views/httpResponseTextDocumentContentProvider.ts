@@ -1,44 +1,46 @@
 "use strict";
 
-import { Uri, window, extensions } from 'vscode';
+import { Uri, extensions } from 'vscode';
 import { BaseTextDocumentContentProvider } from './baseTextDocumentContentProvider';
 import { RestClientSettings } from '../models/configurationSettings';
-import { HttpResponse } from '../models/httpResponse';
 import { MimeUtility } from '../mimeUtility';
+import { ResponseFormatUtility } from '../responseFormatUtility';
+import { ResponseStore } from '../responseStore';
 import * as Constants from '../constants';
 import * as path from 'path';
 
 const hljs = require('highlight.js');
 const codeHighlightLinenums = require('code-highlight-linenums');
 
-var pd = require('pretty-data').pd;
 var autoLinker = require('autolinker');
 
 export class HttpResponseTextDocumentContentProvider extends BaseTextDocumentContentProvider {
     private static cssFilePath: string = path.join(extensions.getExtension(Constants.ExtensionId).extensionPath, Constants.CSSFolderName, Constants.CSSFileName);
 
-    public constructor(public response: HttpResponse, public settings: RestClientSettings) {
+    public constructor(public settings: RestClientSettings) {
         super();
     }
 
     public provideTextDocumentContent(uri: Uri): string {
-        if (this.response) {
-            let innerHtml: string;
-            let width = 2;
-            let contentType = this.response.getResponseHeaderValue("content-type");
-            if (contentType) {
-                contentType = contentType.trim();
-            }
-            if (contentType && MimeUtility.isBrowserSupportedImageFormat(contentType)) {
-                innerHtml = `<img src="${this.response.requestUrl}">`;
-            } else {
-                let code = `HTTP/${this.response.httpVersion} ${this.response.statusCode} ${this.response.statusMessage}
-${HttpResponseTextDocumentContentProvider.formatHeaders(this.response.headers)}
-${HttpResponseTextDocumentContentProvider.formatBody(this.response.body, this.response.getResponseHeaderValue("content-type"))}`;
-                width = (code.split(/\r\n|\r|\n/).length + 1).toString().length;
-                innerHtml = `<pre><code class="http">${codeHighlightLinenums(code, { hljs: hljs, lang: 'http', start: 1 })}</code></pre>`;
-            }
-            return `
+        if (uri) {
+            let response = ResponseStore.get(uri.toString());
+            if (response) {
+                let innerHtml: string;
+                let width = 2;
+                let contentType = response.getResponseHeaderValue("content-type");
+                if (contentType) {
+                    contentType = contentType.trim();
+                }
+                if (contentType && MimeUtility.isBrowserSupportedImageFormat(contentType)) {
+                    innerHtml = `<img src="data:${contentType};base64,${new Buffer(response.bodyStream).toString('base64')}">`;
+                } else {
+                    let code = `HTTP/${response.httpVersion} ${response.statusCode} ${response.statusMessage}
+${HttpResponseTextDocumentContentProvider.formatHeaders(response.headers)}
+${ResponseFormatUtility.FormatBody(response.body, response.getResponseHeaderValue("content-type"))}`;
+                    width = (code.split(/\r\n|\r|\n/).length + 1).toString().length;
+                    innerHtml = `<pre><code class="http">${codeHighlightLinenums(code, { hljs: hljs, lang: 'http', start: 1 })}</code></pre>`;
+                }
+                return `
             <head>
                 <link rel="stylesheet" href="${HttpResponseTextDocumentContentProvider.cssFilePath}">
                 ${this.getSettingsOverrideStyles(width)}
@@ -49,6 +51,7 @@ ${HttpResponseTextDocumentContentProvider.formatBody(this.response.body, this.re
                     <a id="scroll-to-top" role="button" aria-label="scroll to top" onclick="scroll(0,0)"><span class="icon"></span></a>
                 </div>
             </body>`;
+            }
         }
     }
 
@@ -72,16 +75,16 @@ ${HttpResponseTextDocumentContentProvider.formatBody(this.response.body, this.re
 
     private addUrlLinks(innerHtml: string) {
         return innerHtml = autoLinker.link(innerHtml, {
-                urls: {
-                    schemeMatches: true,
-                    wwwMatches: true,
-                    tldMatches: false
-                },
-                email: false,
-                phone: false,
-                stripPrefix: false,
-                stripTrailingSlash: false
-            });
+            urls: {
+                schemeMatches: true,
+                wwwMatches: true,
+                tldMatches: false
+            },
+            email: false,
+            phone: false,
+            stripPrefix: false,
+            stripTrailingSlash: false
+        });
     }
 
     private static formatHeaders(headers: { [key: string]: string }): string {
@@ -96,37 +99,5 @@ ${HttpResponseTextDocumentContentProvider.formatBody(this.response.body, this.re
             }
         }
         return headerString;
-    }
-
-    private static formatBody(body: string, contentType: string): string {
-        if (contentType) {
-            let mime = MimeUtility.parse(contentType);
-            let type = mime.type;
-            let suffix = mime.suffix;
-            if (type === 'application/json') {
-                if (HttpResponseTextDocumentContentProvider.isJsonString(body)) {
-                    body = JSON.stringify(JSON.parse(body), null, 2);
-                } else {
-                    window.showWarningMessage('The content type of response is application/json, while response body is not a valid json string');
-                }
-            } else if (type === 'application/xml' ||
-                       type === 'text/xml' ||
-                       (type === 'application/atom' && suffix === '+xml')) {
-                body = pd.xml(body);
-            } else if (type === 'text/css') {
-                body = pd.css(body);
-            }
-        }
-
-        return body;
-    }
-
-    private static isJsonString(data: string) {
-        try {
-            JSON.parse(data);
-            return true;
-        } catch (e) {
-            return false;
-        }
     }
 }

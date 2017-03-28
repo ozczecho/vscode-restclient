@@ -1,5 +1,6 @@
 "use strict";
 
+import { SnippetString } from 'vscode';
 import { EnvironmentController } from './controllers/environmentController';
 import { HttpElement, ElementType } from './models/httpElement';
 import { PersistUtility } from './persistUtility';
@@ -62,6 +63,7 @@ export class HttpElementFactory {
         originalElements.push(new HttpElement("application/xml", ElementType.MIME, '^\\s*(Content-Type|Accept)\\s*\\:\\s*'));
         originalElements.push(new HttpElement("application/javascript", ElementType.MIME, '^\\s*(Content-Type|Accept)\\s*\\:\\s*'));
         originalElements.push(new HttpElement("application/xhtml+xml", ElementType.MIME, '^\\s*(Content-Type|Accept)\\s*\\:\\s*'));
+        originalElements.push(new HttpElement("application/octet-stream", ElementType.MIME, '^\\s*(Content-Type|Accept)\\s*\\:\\s*'));
         originalElements.push(new HttpElement("application/soap+xml", ElementType.MIME, '^\\s*(Content-Type|Accept)\\s*\\:\\s*'));
         originalElements.push(new HttpElement("application/zip", ElementType.MIME, '^\\s*(Content-Type|Accept)\\s*\\:\\s*'));
         originalElements.push(new HttpElement("application/gzip", ElementType.MIME, '^\\s*(Content-Type|Accept)\\s*\\:\\s*'));
@@ -78,14 +80,19 @@ export class HttpElementFactory {
         originalElements.push(new HttpElement("text/xml", ElementType.MIME, '^\\s*(Content-Type|Accept)\\s*\\:\\s*'));
 
         // add global variables
-        originalElements.push(new HttpElement(`{{${Constants.GuidVariableName}}}`, ElementType.GlobalVariable, null, Constants.GuidVariableDescription));
-        originalElements.push(new HttpElement(`{{${Constants.TimeStampVariableName}}}`, ElementType.GlobalVariable, null, Constants.TimeStampVariableDescription));
-        originalElements.push(new HttpElement(`{{${Constants.RandomInt}}}`, ElementType.GlobalVariable, null, Constants.RandomIntDescription));
+        originalElements.push(new HttpElement(Constants.GuidVariableName, ElementType.SystemVariable, null, Constants.GuidVariableDescription, `{{${Constants.GuidVariableName}}}`));
+        originalElements.push(new HttpElement(Constants.TimeStampVariableName, ElementType.SystemVariable, null, Constants.TimeStampVariableDescription, `{{${Constants.TimeStampVariableName}}}`));
+        originalElements.push(new HttpElement(
+            Constants.RandomInt,
+            ElementType.SystemVariable,
+            null,
+            Constants.RandomIntDescription,
+            new SnippetString(`{{${Constants.RandomInt} \${1:min} \${2:max}}}`)));
 
         // add custom variables
         let customVariables = await EnvironmentController.getCustomVariables();
         for (var variableName in customVariables) {
-            originalElements.push(new HttpElement(`{{${variableName}}}`, ElementType.CustomVariable, null, `Value: ${customVariables[variableName]}`));
+            originalElements.push(new HttpElement(variableName, ElementType.CustomVariable, null, `Value: ${customVariables[variableName]}`, `{{${variableName}}}`));
         }
 
         // add urls from history
@@ -112,7 +119,7 @@ export class HttpElementFactory {
             elements = originalElements.filter(e => !e.prefix);
         } else {
             // add global/custom variables anyway
-            originalElements.filter(e => !e.prefix && (e.type === ElementType.GlobalVariable || e.type === ElementType.CustomVariable)).forEach(element => {
+            originalElements.filter(e => !e.prefix && (e.type === ElementType.SystemVariable || e.type === ElementType.CustomVariable)).forEach(element => {
                 elements.push(element);
             });
         }

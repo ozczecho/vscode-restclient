@@ -1,11 +1,16 @@
 "use strict";
 
+import { window, workspace } from 'vscode';
 import { RestClientSettings } from './models/configurationSettings';
 import { HttpRequest } from './models/httpRequest';
 import { HttpResponse } from './models/httpResponse';
+import { HttpResponseTimingPhases } from './models/httpResponseTimingPhases';
+import { HostCertificate } from './models/hostCertificate';
 import { PersistUtility } from './persistUtility';
 import { MimeUtility } from './mimeUtility';
 import * as url from 'url';
+import * as fs from 'fs';
+import * as path from 'path';
 
 var encodeUrl = require('encodeurl');
 var request = require('request');
@@ -31,8 +36,16 @@ export class HttpClient {
             timeout: this._settings.timeoutInMilliseconds,
             gzip: true,
             followRedirect: this._settings.followRedirect,
-            jar: this._settings.rememberCookiesForSubsequentRequests ? request.jar(new cookieStore(PersistUtility.cookieFilePath)) : false
+            jar: this._settings.rememberCookiesForSubsequentRequests ? request.jar(new cookieStore(PersistUtility.cookieFilePath)) : false,
+            forever: true
         };
+
+        // set certificate
+        let certificate = this.getRequestCertificate(httpRequest.url);
+        options.cert = certificate.cert;
+        options.key = certificate.key;
+        options.pfx = certificate.pfx;
+        options.passphrase = certificate.passphrase;
 
         // set proxy
         options.proxy = HttpClient.ignoreProxy(httpRequest.url, this._settings.excludeHostsForProxy) ? null : this._settings.proxy;
@@ -48,7 +61,7 @@ export class HttpClient {
         }
 
         let size = 0;
-
+        let headersSize = 0;
         return new Promise<HttpResponse>((resolve, reject) => {
             request(options, function (error, response, body) {
                 if (error) {
@@ -72,6 +85,7 @@ export class HttpClient {
                     encoding = "utf8";
                 }
 
+                let bodyStream = body;
                 let buffer = new Buffer(body);
                 try {
                     body = iconv.decode(buffer, encoding);
@@ -101,11 +115,27 @@ export class HttpClient {
                     body,
                     response.elapsedTime,
                     httpRequest.url,
-                    size));
+                    size,
+                    headersSize,
+                    bodyStream,
+                    new HttpResponseTimingPhases(
+                        response.timingPhases.total,
+                        response.timingPhases.wait,
+                        response.timingPhases.dns,
+                        response.timingPhases.tcp,
+                        response.timingPhases.firstByte,
+                        response.timingPhases.download
+                    )));
             })
-            .on('data', function (data) {
-                size += data.length;
-            })
+                .on('data', function (data) {
+                    size += data.length;
+                })
+                .on('response', function (response) {
+                    if (response.rawHeaders) {
+                        headersSize += response.rawHeaders.map(h => h.length).reduce((a, b) => a + b, 0);
+                        headersSize += (response.rawHeaders.length) / 2;
+                    }
+                })
         });
     }
 
@@ -119,6 +149,40 @@ export class HttpClient {
         }
 
         return null;
+    }
+
+    private getRequestCertificate(requestUrl: string): { cert?: string, key?: string, pfx?: string, passphrase?: string } {
+        let resolvedUrl = url.parse(requestUrl);
+        let hostName = resolvedUrl.hostname;
+        let port = resolvedUrl.port;
+        let host = port ? `${hostName}:${port}` : hostName;
+        if (host in this._settings.hostCertificates) {
+            let certificate = this._settings.hostCertificates[host];
+            let cert = undefined,
+                key = undefined,
+                pfx = undefined;
+            if (certificate.cert) {
+                let certPath = HttpClient.resolveCertificateFullPath(certificate.cert, "cert");
+                if (certPath) {
+                    cert = fs.readFileSync(certPath);
+                }
+            }
+            if (certificate.key) {
+                let keyPath = HttpClient.resolveCertificateFullPath(certificate.key, "key");
+                if (keyPath) {
+                    key = fs.readFileSync(keyPath);
+                }
+            }
+            if (certificate.pfx) {
+                let pfxPath = HttpClient.resolveCertificateFullPath(certificate.pfx, "pfx");
+                if (pfxPath) {
+                    pfx = fs.readFileSync(pfxPath);
+                }
+            }
+            return new HostCertificate(cert, key, pfx, certificate.passphrase);
+        } else {
+            return new HostCertificate();
+        }
     }
 
     private static getResponseRawHeaderNames(rawHeaders: string[]): { [key: string]: string } {
@@ -158,5 +222,36 @@ export class HttpClient {
         }
 
         return false;
+    }
+
+    private static resolveCertificateFullPath(absoluteOrRelativePath: string, certName: string): string {
+        if (path.isAbsolute(absoluteOrRelativePath)) {
+            if (!fs.existsSync(absoluteOrRelativePath)) {
+                window.showWarningMessage(`Certificate path ${absoluteOrRelativePath} of ${certName} doesn't exist, please make sure it exists.`);
+                return;
+            } else {
+                return absoluteOrRelativePath;
+            }
+        }
+
+        // the path should be relative path
+        var rootPath = workspace.rootPath;
+        if (rootPath) {
+            var absolutePath = path.join(rootPath, absoluteOrRelativePath);
+            if (fs.existsSync(absolutePath)) {
+                return absolutePath;
+            } else {
+                window.showWarningMessage(`Certificate path ${absoluteOrRelativePath} of ${certName} doesn't exist, please make sure it exists.`);
+                return;
+            }
+        }
+
+        absolutePath = path.join(path.dirname(window.activeTextEditor.document.fileName), absoluteOrRelativePath);
+        if (fs.existsSync(absolutePath)) {
+            return absolutePath;
+        } else {
+            window.showWarningMessage(`Certificate path ${absoluteOrRelativePath} of ${certName} doesn't exist, please make sure it exists.`);
+            return;
+        }
     }
 }

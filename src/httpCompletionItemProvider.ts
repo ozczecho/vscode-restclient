@@ -13,13 +13,8 @@ export class HttpCompletionItemProvider implements CompletionItemProvider {
             let item = new CompletionItem(e.name);
             item.detail = `HTTP ${ElementType[e.type]}`;
             item.documentation = e.description;
-            let insertText = e.type === ElementType.Header
-                ? `${e.name}: `
-                : (e.type === ElementType.Method
-                    ? `${e.name} `
-                    : `${e.name}`);
-            item.insertText = this.escapeCompletionItemInsertText(insertText);
-            item.kind = e.type === ElementType.GlobalVariable
+            item.insertText = e.text;
+            item.kind = e.type === ElementType.SystemVariable
                 ? CompletionItemKind.Variable
                 : e.type === ElementType.Method
                     ? CompletionItemKind.Method
@@ -30,9 +25,5 @@ export class HttpCompletionItemProvider implements CompletionItemProvider {
         });
 
         return completionItems;
-    }
-
-    private escapeCompletionItemInsertText(str: string): string {
-        return str.replace(/[\{\}]/g, "\\$&");
     }
 }

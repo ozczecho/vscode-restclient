@@ -1,4 +1,5 @@
 import { workspace } from 'vscode';
+import { HostCertificate } from '../models/hostCertificate';
 
 export interface IRestClientSettings {
     followRedirect: boolean;
@@ -14,6 +15,12 @@ export interface IRestClientSettings {
     fontFamily: string;
     fontWeight: string;
     environmentVariables: Map<string, Map<string, string>>;
+    mimeAndFileExtensionMapping: Map<string, string>;
+    previewResponseInUntitledDocument: boolean;
+    previewResponseSetUntitledDocumentLanguageByContentType: boolean;
+    includeAdditionalInfoInResponse: boolean;
+    hostCertificates: Map<string, HostCertificate>;
+
 }
 
 export class RestClientSettings implements IRestClientSettings {
@@ -30,6 +37,11 @@ export class RestClientSettings implements IRestClientSettings {
     public fontFamily: string;
     public fontWeight: string;
     public environmentVariables: Map<string, Map<string, string>>;
+    public mimeAndFileExtensionMapping: Map<string, string>;
+    public previewResponseInUntitledDocument: boolean;
+    public previewResponseSetUntitledDocumentLanguageByContentType: boolean;
+    public includeAdditionalInfoInResponse: boolean;
+    public hostCertificates: Map<string, HostCertificate>;
 
     public constructor() {
         workspace.onDidChangeConfiguration(() => {
@@ -55,6 +67,12 @@ export class RestClientSettings implements IRestClientSettings {
         this.fontWeight = restClientSettings.get<string>("fontWeight", null);
 
         this.environmentVariables = restClientSettings.get<Map<string, Map<string, string>>>("environmentVariables", new Map<string, Map<string, string>>());
+        this.mimeAndFileExtensionMapping = restClientSettings.get<Map<string, string>>("mimeAndFileExtensionMapping", new Map<string, string>());
+
+        this.previewResponseInUntitledDocument = restClientSettings.get<boolean>("previewResponseInUntitledDocument", false);
+        this.previewResponseSetUntitledDocumentLanguageByContentType = restClientSettings.get<boolean>("previewResponseSetUntitledDocumentLanguageByContentType", false);
+        this.includeAdditionalInfoInResponse = restClientSettings.get<boolean>("includeAdditionalInfoInResponse", false);
+        this.hostCertificates = restClientSettings.get<Map<string, HostCertificate>>("certificates", new Map<string, HostCertificate>());
 
         let httpSettings = workspace.getConfiguration('http');
         this.proxy = httpSettings.get<string>('proxy', undefined);
