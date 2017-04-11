@@ -40,6 +40,23 @@ export class HttpClient {
             forever: true
         };
 
+        // set auth to digest if Authorization header follows: Authorization: Digest username password
+        let authorization = HttpClient.getHeaderValue(options.headers, 'Authorization');
+        if (authorization) {
+            let start = authorization.indexOf(' ');
+            let scheme = authorization.substr(0, start);
+            if (scheme === 'Digest' || scheme === 'Basic') {
+                let params = authorization.substr(start).trim().split(' ');
+                if (params.length === 2) {
+                    options.auth = {
+                        user: params[0],
+                        pass: params[1],
+                        sendImmediately: scheme === 'Basic'
+                    }
+                }
+            }
+        }
+
         // set certificate
         let certificate = this.getRequestCertificate(httpRequest.url);
         options.cert = certificate.cert;

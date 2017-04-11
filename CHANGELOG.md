@@ -1,3 +1,16 @@
+## 0.14.1 (2017/4/7)
+* __Bug Fix__: [Could not resolve any model with provided uri](https://github.com/Huachao/vscode-restclient/issues/90)
+* __Improvement__: [Icon redesign](https://github.com/Huachao/vscode-restclient/pull/87) [(@pluwen)](https://github.com/pluwen)
+* __Improvement__: [Switch to new API for opening editor](https://github.com/Huachao/vscode-restclient/pull/89) [(@dakaraphi)](https://github.com/dakaraphi/)
+
+## 0.14.0 (2017/4/3)
+* __Feature__: [Support Digest Authentication](https://github.com/Huachao/vscode-restclient/issues/61)
+* __Feature__: [Support client side certificate authentication](https://github.com/Huachao/vscode-restclient/issues/35)
+* __Bug Fix__: [Fix showResponseInDifferentTab doesn't work](https://github.com/Huachao/vscode-restclient/issues/81)
+* __Improvement__: Add setting to tse trunked transfer encoding for sending file content as request body
+* __Improvement__: [Allow to preview response body only in untitled document](https://github.com/Huachao/vscode-restclient/pull/82) [(@dakaraphi)](https://github.com/dakaraphi/)
+* __Improvement__: Format response body whose suffix of content type header is json
+
 ## 0.13.0 (2017/3/20)
 * __Feature__: Allow preview response in untitled document directly to use the full power of VS Code to search, select or manipulate the response
 * __Feature__: Support saving response body to corresponding file according to response MIME type, and also provide setting `rest-client.mimeAndFileExtensionMapping` to overwrite the saved file extension

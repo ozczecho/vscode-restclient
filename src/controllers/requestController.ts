@@ -73,7 +73,7 @@ export class RequestController {
         selectedText = await VariableProcessor.processRawRequest(selectedText);
 
         // parse http request
-        let httpRequest = new RequestParserFactory().createRequestParser(selectedText).parseHttpRequest(selectedText, editor.document.fileName);
+        let httpRequest = new RequestParserFactory().createRequestParser(selectedText).parseHttpRequest(selectedText, editor.document.fileName, this._restClientSettings.useTrunkedTransferEncodingForSendingFileContent);
         if (!httpRequest) {
             return;
         }
@@ -230,8 +230,7 @@ export class RequestController {
             return;
         }
 
-        ResponseStore.remove(doc.uri.toString());
-        if (ResponseStore.size === 0) {
+        if (ResponseStore.get(doc.uri.toString())) {
             this._durationStatusBarItem.hide();
             this._sizeStatusBarItem.hide();
         }
