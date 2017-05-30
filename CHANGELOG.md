@@ -1,3 +1,16 @@
+## 0.14.4 (2017/5/16)
+* __Bug Fix__: [getting error "Unable to open'Response(xxxms)': Cannot read property 'toLowerCase' of null"](https://github.com/Huachao/vscode-restclient/issues/96)
+
+## 0.14.3 (2017/5/12)
+* __Bug Fix__: [Performance issue when rendering large response](https://github.com/Huachao/vscode-restclient/issues/59), [cannot show raw big-data](https://github.com/Huachao/vscode-restclient/issues/94)
+* __Bug Fix__: Fix bug to allow generate code snippet for `cURL`, `httpie` and `wget`
+* __Improvement__: [use new vscode api to preview untitled document](https://github.com/Huachao/vscode-restclient/pull/93) [(@dakaraphi)](https://github.com/dakaraphi/)
+
+## 0.14.2 (2017/5/3)
+* __Bug Fix__: Fix MIME types autocompletion bug
+* __Improvement__: Add autocompletion for Basic Auth and Digest Auth
+* __Improvement__: Add request body document link provider to allow user to click to referenced document
+
 ## 0.14.1 (2017/4/7)
 * __Bug Fix__: [Could not resolve any model with provided uri](https://github.com/Huachao/vscode-restclient/issues/90)
 * __Improvement__: [Icon redesign](https://github.com/Huachao/vscode-restclient/pull/87) [(@pluwen)](https://github.com/pluwen)
@@ -7,7 +20,7 @@
 * __Feature__: [Support Digest Authentication](https://github.com/Huachao/vscode-restclient/issues/61)
 * __Feature__: [Support client side certificate authentication](https://github.com/Huachao/vscode-restclient/issues/35)
 * __Bug Fix__: [Fix showResponseInDifferentTab doesn't work](https://github.com/Huachao/vscode-restclient/issues/81)
-* __Improvement__: Add setting to tse trunked transfer encoding for sending file content as request body
+* __Improvement__: Add setting to the trunked transfer encoding for sending file content as request body
 * __Improvement__: [Allow to preview response body only in untitled document](https://github.com/Huachao/vscode-restclient/pull/82) [(@dakaraphi)](https://github.com/dakaraphi/)
 * __Improvement__: Format response body whose suffix of content type header is json
 

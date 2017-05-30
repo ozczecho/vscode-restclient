@@ -2,7 +2,7 @@
   "name": "rest-client",
   "displayName": "REST Client",
   "description": "REST Client for Visual Studio Code",
-  "version": "0.14.1-1",
+  "version": "0.14.4-1",
   "publisher": "humao",
   "author": {
     "name": "Huachao Mao",
@@ -24,7 +24,7 @@
     "url": "https://github.com/Huachao/vscode-restclient.git"
   },
   "engines": {
-    "vscode": "^1.11.0"
+    "vscode": "^1.12.0"
   },
   "categories": [
     "Other",
@@ -354,7 +354,7 @@
           "type": "object",
           "default": {},
           "description": "Certificate paths for different hosts. The path can be absolute path or relative path(relative to workspace or current http file)",
-          "pattern": "^(?!http(s?):\/\/)",
+          "pattern": "^(?!http(s?)://)",
           "additionalProperties": {
             "anyOf": [
               {
