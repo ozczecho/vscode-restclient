@@ -2,7 +2,7 @@
   "name": "rest-client",
   "displayName": "REST Client",
   "description": "REST Client for Visual Studio Code",
-  "version": "0.14.4-1",
+  "version": "0.14.5-1",
   "publisher": "humao",
   "author": {
     "name": "Huachao Mao",
@@ -141,6 +141,11 @@
           "dark": "./images/copy-inverse.svg"
         },
         "category": "Rest Client"
+      },
+      {
+        "command": "rest-client.copy-request-as-curl",
+        "title": "Copy Request As cURL",
+        "category": "Rest Client"
       }
     ],
     "menus": {
@@ -171,6 +176,11 @@
           "command": "rest-client.generate-codesnippet",
           "when": "editorTextFocus && editorLangId == http",
           "group": "rest-client@2"
+        },
+        {
+          "command": "rest-client.copy-request-as-curl",
+          "when": "editorTextFocus && editorLangId == http",
+          "group": "rest-client@3"
         }
       ]
     },
@@ -389,8 +399,8 @@
                 }
               }
             ]
-    }
-  },
+          }
+        },
         "rest-client.useTrunkedTransferEncodingForSendingFileContent": {
           "type": "boolean",
           "default": true,
@@ -411,7 +421,7 @@
     "@types/node": "^6.0.63",
     "mocha": "^3.2.0",
     "tslint": "^4.2.0",
-    "typescript": "^2.0.3",
+    "typescript": "^2.3.4",
     "vscode": "^1.0.0"
   },
   "dependencies": {
