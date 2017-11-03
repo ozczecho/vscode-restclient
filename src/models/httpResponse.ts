@@ -1,5 +1,6 @@
 "use strict";
 
+import { HttpRequest } from "./httpRequest";
 import { HttpResponseTimingPhases } from './httpResponseTimingPhases';
 
 export class HttpResponse {
@@ -14,12 +15,13 @@ export class HttpResponse {
         public bodySizeInBytes: number,
         public headersSizeInBytes: number,
         public bodyStream: Buffer,
-        public timingPhases: HttpResponseTimingPhases) {
+        public timingPhases: HttpResponseTimingPhases,
+        public request: HttpRequest) {
     }
 
     public getResponseHeaderValue(name: string) {
         if (this.headers) {
-            for (var header in this.headers) {
+            for (let header in this.headers) {
                 if (header.toLowerCase() === name.toLowerCase()) {
                     return this.headers[header];
                 }

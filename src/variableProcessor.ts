@@ -1,33 +1,49 @@
 'use strict';
 
+import { window } from 'vscode';
 import { EnvironmentController } from './controllers/environmentController';
 import * as Constants from './constants';
 import { Func } from './common/delegates';
-var uuid = require('node-uuid');
-var moment = require('moment');
+const uuid = require('node-uuid');
+const moment = require('moment');
 
 export class VariableProcessor {
+
+    private static readonly escapee: Map<string, string> = new Map<string, string>([
+        ['n', '\n'],
+        ['r', '\r'],
+        ['t', '\t']
+    ]);
+
     public static async processRawRequest(request: string) {
         let globalVariables = VariableProcessor.getGlobalVariables();
-        for (var variablePattern in globalVariables) {
+        for (let variablePattern in globalVariables) {
             let regex = new RegExp(`\\{\\{\\s*${variablePattern}\\s*\\}\\}`, 'g');
             if (regex.test(request)) {
                 request = request.replace(regex, globalVariables[variablePattern]);
             }
         }
 
-        let customVariables = await EnvironmentController.getCustomVariables();
-        for (var variableName in customVariables) {
+        let fileVariables = VariableProcessor.getCustomVariablesInCurrentFile();
+        for (let [variableName, variableValue] of fileVariables) {
             let regex = new RegExp(`\\{\\{\\s*${variableName}\\s*\\}\\}`, 'g');
             if (regex.test(request)) {
-                request = request.replace(regex, customVariables[variableName]);
+                request = request.replace(regex, variableValue);
+            }
+        }
+
+        let environmentVariables = await EnvironmentController.getCustomVariables();
+        for (let [variableName, variableValue] of environmentVariables) {
+            let regex = new RegExp(`\\{\\{\\s*${variableName}\\s*\\}\\}`, 'g');
+            if (regex.test(request)) {
+                request = request.replace(regex, variableValue);
             }
         }
 
         return request;
     }
 
-    private static getGlobalVariables(): { [key: string]: Func<string, string> } {
+    public static getGlobalVariables(): { [key: string]: Func<string, string> } {
         return {
             [`\\${Constants.TimeStampVariableName}(?:\\s(\\-?\\d+)\\s(y|Q|M|w|d|h|m|s|ms))?`]: match => {
                 let regex = new RegExp(`\\${Constants.TimeStampVariableName}(?:\\s(\\-?\\d+)\\s(y|Q|M|w|d|h|m|s|ms))?`);
@@ -54,6 +70,42 @@ export class VariableProcessor {
                 }
                 return match;
             }
+        };
+    }
+
+    public static getCustomVariablesInCurrentFile(): Map<string, string> {
+        let variables = new Map<string, string>();
+        let editor = window.activeTextEditor;
+        if (!editor || !editor.document) {
+            return variables;
         }
+
+        let document = editor.document.getText();
+        let lines: string[] = document.split(/\r?\n/g);
+        lines.forEach(line => {
+            let match: RegExpExecArray;
+            if (match = Constants.VariableDefinitionRegex.exec(line)) {
+                let key = match[1];
+                let originalValue = match[2];
+                let value = '';
+                let isPrevCharEscape = false;
+                for (let index = 0; index < originalValue.length; index++) {
+                    let currentChar = originalValue[index];
+                    if (isPrevCharEscape) {
+                        isPrevCharEscape = false;
+                        value += this.escapee.get(currentChar) || currentChar;
+                    } else {
+                        if (currentChar === '\\') {
+                            isPrevCharEscape = true;
+                            continue;
+                        }
+                        value += currentChar;
+                    }
+                }
+                variables.set(key, value);
+            }
+        });
+
+        return variables;
     }
 }

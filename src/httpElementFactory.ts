@@ -4,6 +4,7 @@ import { SnippetString } from 'vscode';
 import { EnvironmentController } from './controllers/environmentController';
 import { HttpElement, ElementType } from './models/httpElement';
 import { PersistUtility } from './persistUtility';
+import { VariableProcessor } from './variableProcessor';
 import * as Constants from './constants';
 import * as url from 'url';
 
@@ -104,10 +105,16 @@ export class HttpElementFactory {
             Constants.RandomIntDescription,
             new SnippetString(`{{$\${name:${Constants.RandomInt.slice(1)}} \${1:min} \${2:max}}}`)));
 
-        // add custom variables
+        // add environment custom variables
         let customVariables = await EnvironmentController.getCustomVariables();
-        for (var variableName in customVariables) {
-            originalElements.push(new HttpElement(variableName, ElementType.CustomVariable, null, `Value: ${customVariables[variableName]}`, new SnippetString(`{{${variableName}}}`)));
+        for (let [variableName, variableValue] of customVariables) {
+            originalElements.push(new HttpElement(variableName, ElementType.EnvironmentCustomVariable, null, `Value: ${variableValue}`, new SnippetString(`{{${variableName}}}`)));
+        }
+
+        // add file custom variables
+        let fileVariables = VariableProcessor.getCustomVariablesInCurrentFile();
+        for (let [variableName, variableValue] of fileVariables) {
+            originalElements.push(new HttpElement(variableName, ElementType.FileCustomVariable, '^\\s*[^@]', `Value: ${variableValue}`, new SnippetString(`{{${variableName}}}`)));
         }
 
         // add urls from history
@@ -132,9 +139,11 @@ export class HttpElementFactory {
 
         if (elements.length === 0) {
             elements = originalElements.filter(e => !e.prefix);
+        } else if (elements.every(e => e.type === ElementType.FileCustomVariable)) {
+            elements = elements.concat(originalElements.filter(e => !e.prefix));
         } else {
             // add global/custom variables anyway
-            originalElements.filter(e => !e.prefix && (e.type === ElementType.SystemVariable || e.type === ElementType.CustomVariable)).forEach(element => {
+            originalElements.filter(e => !e.prefix && (e.type === ElementType.SystemVariable || e.type === ElementType.EnvironmentCustomVariable || e.type === ElementType.FileCustomVariable)).forEach(element => {
                 elements.push(element);
             });
         }

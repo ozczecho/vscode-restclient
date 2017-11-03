@@ -4,12 +4,12 @@ import { window, workspace, OutputChannel } from 'vscode';
 import { PersistUtility } from '../persistUtility';
 import { SerializedHttpRequest } from '../models/httpRequest';
 import { HistoryQuickPickItem } from '../models/historyQuickPickItem';
-import { Telemetry } from '../telemetry';
+import { trace } from "../decorator";
 import { EOL } from 'os';
 import * as fs from 'fs';
 
-var tmp = require('tmp');
-var moment = require('moment');
+let tmp = require('tmp');
+let moment = require('moment');
 
 export class HistoryController {
     private _outputChannel: OutputChannel;
@@ -18,15 +18,15 @@ export class HistoryController {
         this._outputChannel = window.createOutputChannel('REST');
     }
 
+    @trace('History')
     public async save() {
-        Telemetry.sendEvent('History');
         try {
             let requests = await PersistUtility.loadRequests();
             if (!requests || requests.length <= 0) {
                 window.showInformationMessage("No request history items are found!");
                 return;
             }
-            var itemPickList: HistoryQuickPickItem[] = requests.map(request => {
+            let itemPickList: HistoryQuickPickItem[] = requests.map(request => {
                 // TODO: add headers and body in pick item?
                 let item = new HistoryQuickPickItem();
                 item.label = `${request.method.toUpperCase()} ${request.url}`;
@@ -52,8 +52,8 @@ export class HistoryController {
         }
     }
 
+    @trace('Clear History')
     public async clear() {
-        Telemetry.sendEvent('Clear History');
         try {
             window.showInformationMessage(`Do you really want to clear request history?`, { title: 'Yes' }, { title: 'No' })
                 .then(async function (btn) {
@@ -78,9 +78,9 @@ export class HistoryController {
                 }
                 let output = `${request.method.toUpperCase()} ${request.url}${EOL}`;
                 if (request.headers) {
-                    for (var header in request.headers) {
+                    for (let header in request.headers) {
                         if (request.headers.hasOwnProperty(header)) {
-                            var value = request.headers[header];
+                            let value = request.headers[header];
                             output += `${header}: ${value}${EOL}`;
                         }
                     }

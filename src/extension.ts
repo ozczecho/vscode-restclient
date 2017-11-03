@@ -9,8 +9,11 @@ import { CodeSnippetController } from './controllers/codeSnippetController';
 import { EnvironmentController } from './controllers/environmentController';
 import { HttpCompletionItemProvider } from './httpCompletionItemProvider';
 import { CustomVariableHoverProvider } from './customVariableHoverProvider';
+import { CustomVariableDefinitionProvider } from './customVariableDefinitionProvider';
+import { CustomVariableReferenceProvider } from './customVariableReferenceProvider';
 import { HttpCodeLensProvider } from './httpCodeLensProvider';
 import { RequestBodyDocumentLinkProvider } from './documentLinkProvider';
+import { HttpDocumentSymbolProvider } from './httpDocumentSymbolProvider';
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -41,12 +44,17 @@ export async function activate(context: ExtensionContext) {
     context.subscriptions.push(commands.registerCommand('rest-client.copy-request-as-curl', () => codeSnippetController.copyAsCurl()));
     context.subscriptions.push(commands.registerCommand('rest-client.switch-environment', () => environmentController.switchEnvironment()));
     context.subscriptions.push(commands.registerCommand('rest-client._openDocumentLink', args => {
-        workspace.openTextDocument(Uri.file(args.path)).then(window.showTextDocument, window.showErrorMessage);
+        workspace.openTextDocument(Uri.file(args.path)).then(window.showTextDocument, error => {
+            window.showErrorMessage(error.message);
+        });
     }));
     context.subscriptions.push(languages.registerCompletionItemProvider('http', new HttpCompletionItemProvider()));
     context.subscriptions.push(languages.registerHoverProvider('http', new CustomVariableHoverProvider()));
     context.subscriptions.push(languages.registerCodeLensProvider('http', new HttpCodeLensProvider()));
     context.subscriptions.push(languages.registerDocumentLinkProvider('http', new RequestBodyDocumentLinkProvider()));
+    context.subscriptions.push(languages.registerDefinitionProvider('http', new CustomVariableDefinitionProvider()));
+    context.subscriptions.push(languages.registerReferenceProvider('http', new CustomVariableReferenceProvider()));
+    context.subscriptions.push(languages.registerDocumentSymbolProvider('http', new HttpDocumentSymbolProvider()));
 }
 
 // this method is called when your extension is deactivated

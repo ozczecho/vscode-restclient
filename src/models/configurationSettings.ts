@@ -1,5 +1,6 @@
-import { workspace } from 'vscode';
+import { window, workspace, WorkspaceConfiguration } from 'vscode';
 import { HostCertificate } from '../models/hostCertificate';
+import { PreviewOption, fromString as ParsePreviewOptionStr } from '../models/previewOption';
 
 export interface IRestClientSettings {
     followRedirect: boolean;
@@ -21,6 +22,9 @@ export interface IRestClientSettings {
     includeAdditionalInfoInResponse: boolean;
     hostCertificates: Map<string, HostCertificate>;
     useTrunkedTransferEncodingForSendingFileContent: boolean;
+    suppressResponseBodyContentTypeValidationWarning: boolean;
+
+    previewOption: PreviewOption;
 }
 
 export class RestClientSettings implements IRestClientSettings {
@@ -43,6 +47,9 @@ export class RestClientSettings implements IRestClientSettings {
     public includeAdditionalInfoInResponse: boolean;
     public hostCertificates: Map<string, HostCertificate>;
     public useTrunkedTransferEncodingForSendingFileContent: boolean;
+    public suppressResponseBodyContentTypeValidationWarning: boolean;
+
+    public previewOption: PreviewOption;
 
     public constructor() {
         workspace.onDidChangeConfiguration(() => {
@@ -53,7 +60,7 @@ export class RestClientSettings implements IRestClientSettings {
     }
 
     private initializeSettings() {
-        var restClientSettings = workspace.getConfiguration("rest-client");
+        let restClientSettings = this.getWorkspaceConfiguration();
         this.followRedirect = restClientSettings.get<boolean>("followredirect", true);
         this.defaultUserAgent = restClientSettings.get<string>("defaultuseragent", "vscode-restclient");
         this.showResponseInDifferentTab = restClientSettings.get<boolean>("showResponseInDifferentTab", false);
@@ -75,10 +82,21 @@ export class RestClientSettings implements IRestClientSettings {
         this.includeAdditionalInfoInResponse = restClientSettings.get<boolean>("includeAdditionalInfoInResponse", false);
         this.hostCertificates = restClientSettings.get<Map<string, HostCertificate>>("certificates", new Map<string, HostCertificate>());
         this.useTrunkedTransferEncodingForSendingFileContent = restClientSettings.get<boolean>("useTrunkedTransferEncodingForSendingFileContent", true);
+        this.suppressResponseBodyContentTypeValidationWarning = restClientSettings.get<boolean>("suppressResponseBodyContentTypeValidationWarning", false);
+        this.previewOption = ParsePreviewOptionStr(restClientSettings.get<string>("previewOption", "full"));
 
         let httpSettings = workspace.getConfiguration('http');
         this.proxy = httpSettings.get<string>('proxy', undefined);
         this.proxyStrictSSL = httpSettings.get<boolean>('proxyStrictSSL', false);
         this.enableTelemetry = httpSettings.get<boolean>('enableTelemetry', true);
+    }
+
+    private getWorkspaceConfiguration(): WorkspaceConfiguration {
+        let editor = window.activeTextEditor;
+        if (editor && editor.document) {
+            return workspace.getConfiguration("rest-client", editor.document.uri);
+        } else {
+            return workspace.getConfiguration("rest-client");
+        }
     }
 }

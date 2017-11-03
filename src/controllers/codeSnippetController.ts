@@ -1,6 +1,7 @@
 "use strict";
 
 import { window, Uri, Disposable, workspace, commands, ViewColumn } from 'vscode';
+import { ArrayUtility } from "../common/arrayUtility";
 import { RequestParserFactory } from '../models/requestParserFactory';
 import { VariableProcessor } from '../variableProcessor';
 import { HttpRequest } from '../models/httpRequest';
@@ -12,6 +13,7 @@ import { CodeSnippetClient } from '../models/codeSnippetClient';
 import { CodeSnippetTextDocumentContentProvider } from '../views/codeSnippetTextDocumentContentProvider';
 import { Selector } from '../selector';
 import { Telemetry } from '../telemetry';
+import { trace } from "../decorator";
 import * as Constants from '../constants';
 import { EOL } from 'os';
 
@@ -49,6 +51,10 @@ export class CodeSnippetController {
         if (selectedText === '') {
             return;
         }
+
+        // remove file variables definition lines
+        lines = selectedText.split(/\r?\n/g);
+        selectedText = ArrayUtility.skipWhile(lines, l => Constants.VariableDefinitionRegex.test(l)).join(EOL);
 
         // variables replacement
         selectedText = await VariableProcessor.processRawRequest(selectedText);
@@ -119,12 +125,14 @@ export class CodeSnippetController {
         }
     }
 
+    @trace('Copy Code Snippet')
     public async copy() {
         if (this._convertedResult) {
             cp.copy(this._convertedResult);
         }
     }
 
+    @trace('Copy Request As cURL')
     public async copyAsCurl() {
         let editor = window.activeTextEditor;
         if (!editor || !editor.document) {
@@ -144,7 +152,11 @@ export class CodeSnippetController {
             return;
         }
 
-        // variables replacement
+        // remove file variables definition lines
+        lines = selectedText.split(/\r?\n/g);
+        selectedText = ArrayUtility.skipWhile(lines, l => Constants.VariableDefinitionRegex.test(l)).join(EOL);
+
+        // environment variables replacement
         selectedText = await VariableProcessor.processRawRequest(selectedText);
         this._selectedText = selectedText;
 
@@ -163,7 +175,7 @@ export class CodeSnippetController {
     private convertToHARHttpRequest(request: HttpRequest): HARHttpRequest {
         // convert headers
         let headers: HARHeader[] = [];
-        for (var key in request.headers) {
+        for (let key in request.headers) {
             let headerValue = request.headers[key];
             if (key.toLowerCase() === 'authorization') {
                 headerValue = CodeSnippetController.normalizeAuthHeader(headerValue);
@@ -176,13 +188,8 @@ export class CodeSnippetController {
         let cookieHeader = headers.find(header => header.name.toLowerCase() === 'cookie');
         if (cookieHeader) {
             cookieHeader.value.split(';').forEach(pair => {
-                let cookieParts = pair.split('=', 2);
-                if (cookieParts.length === 2) {
-                    cookies.push(new HARCookie(cookieParts[0].trim(), cookieParts[1].trim()));
-                }
-                else {
-                    cookies.push(new HARCookie(cookieParts[0].trim(), ''));
-                }
+                let [headerName, headerValue = ''] = pair.split('=', 2);
+                cookies.push(new HARCookie(headerName.trim(), headerValue.trim()));
             });
         }
 
@@ -195,7 +202,7 @@ export class CodeSnippetController {
                 mimeType = contentTypeHeader.value;
             }
             if (typeof request.body === 'string') {
-                var normalizedBody = request.body.split(EOL).reduce((prev, cur) => prev.concat(cur.trim()), '');
+                let normalizedBody = request.body.split(EOL).reduce((prev, cur) => prev.concat(cur.trim()), '');
                 body = new HARPostData(mimeType, normalizedBody);
             } else {
                 body = new HARPostData(mimeType, request.rawBody);

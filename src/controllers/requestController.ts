@@ -1,6 +1,7 @@
 "use strict";
 
 import { window, workspace, commands, Uri, StatusBarItem, StatusBarAlignment, ViewColumn, Disposable, TextDocument, Range } from 'vscode';
+import { ArrayUtility } from "../common/arrayUtility";
 import { RequestParserFactory } from '../models/requestParserFactory';
 import { EnvironmentController } from './environmentController';
 import { HttpClient } from '../httpClient';
@@ -11,7 +12,7 @@ import { RestClientSettings } from '../models/configurationSettings';
 import { PersistUtility } from '../persistUtility';
 import { HttpResponseTextDocumentContentProvider } from '../views/httpResponseTextDocumentContentProvider';
 import { UntitledFileContentProvider } from '../views/responseUntitledFileContentProvider';
-import { Telemetry } from '../telemetry';
+import { trace } from "../decorator";
 import { VariableProcessor } from '../variableProcessor';
 import { RequestStore } from '../requestStore';
 import { ResponseStore } from '../responseStore';
@@ -49,8 +50,8 @@ export class RequestController {
         workspace.onDidCloseTextDocument((params) => this.onDidCloseTextDocument(params));
     }
 
+    @trace('Request')
     public async run(range: Range) {
-        Telemetry.sendEvent('Request');
         let editor = window.activeTextEditor;
         if (!editor || !editor.document) {
             return;
@@ -69,6 +70,10 @@ export class RequestController {
             return;
         }
 
+        // remove file variables definition lines
+        lines = selectedText.split(/\r?\n/g);
+        selectedText = ArrayUtility.skipWhile(lines, l => Constants.VariableDefinitionRegex.test(l) || l.trim() === '').join(EOL);
+
         // variables replacement
         selectedText = await VariableProcessor.processRawRequest(selectedText);
 
@@ -81,9 +86,8 @@ export class RequestController {
         await this.runCore(httpRequest);
     }
 
+    @trace('Rerun Request')
     public async rerun() {
-        Telemetry.sendEvent('Rerun Request');
-
         let httpRequest = RequestStore.getLatest();
         if (!httpRequest) {
             return;
@@ -92,8 +96,8 @@ export class RequestController {
         await this.runCore(httpRequest);
     }
 
+    @trace('Cancel Request')
     public async cancel() {
-        Telemetry.sendEvent('Cancel Request');
 
         if (RequestStore.isCompleted()) {
             return;
@@ -162,7 +166,8 @@ export class RequestController {
                         response,
                         this._restClientSettings.showResponseInDifferentTab,
                         this._restClientSettings.previewResponseSetUntitledDocumentLanguageByContentType,
-                        this._restClientSettings.includeAdditionalInfoInResponse
+                        this._restClientSettings.includeAdditionalInfoInResponse,
+                        this._restClientSettings.suppressResponseBodyContentTypeValidationWarning
                     );
                 } else {
                     await commands.executeCommand('vscode.previewHtml', previewUri, ViewColumn.Two, `Response(${response.elapsedMillionSeconds}ms)`);
@@ -239,9 +244,8 @@ export class RequestController {
     private formatDurationStatusBar(response: HttpResponse) {
         this._durationStatusBarItem.command = null;
         this._durationStatusBarItem.text = ` $(clock) ${response.elapsedMillionSeconds}ms`;
-        // this._durationStatusBarItem.tooltip = `Duration:${EOL}Total: ${response`;
         this._durationStatusBarItem.tooltip = [
-            'Duration:',
+            'Breakdown of Duration:',
             `Socket: ${response.timingPhases.wait.toFixed(1)}ms`,
             `DNS: ${response.timingPhases.dns.toFixed(1)}ms`,
             `TCP: ${response.timingPhases.tcp.toFixed(1)}ms`,
@@ -252,6 +256,6 @@ export class RequestController {
 
     private formatSizeStatusBar(response: HttpResponse) {
         this._sizeStatusBarItem.text = ` $(database) ${filesize(response.bodySizeInBytes + response.headersSizeInBytes)}`;
-        this._sizeStatusBarItem.tooltip = `Response Size:${EOL}Headers: ${filesize(response.headersSizeInBytes)}${EOL}Body: ${filesize(response.bodySizeInBytes)}`;
+        this._sizeStatusBarItem.tooltip = `Breakdown of Response Size:${EOL}Headers: ${filesize(response.headersSizeInBytes)}${EOL}Body: ${filesize(response.bodySizeInBytes)}`;
     }
 }

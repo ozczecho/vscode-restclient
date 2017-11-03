@@ -1,7 +1,9 @@
 'use strict';
 
 import { DocumentLink, DocumentLinkProvider, TextDocument, Range, Position, Uri, workspace, CancellationToken } from 'vscode';
+import { getWorkspaceRootPath } from './workspaceUtility';
 import * as path from 'path';
+import * as fs from 'fs';
 
 export class RequestBodyDocumentLinkProvider implements DocumentLinkProvider {
 
@@ -13,9 +15,9 @@ export class RequestBodyDocumentLinkProvider implements DocumentLinkProvider {
         const text = document.getText();
 
         let lines: string[] = text.split(/\r?\n/g);
-        for (var index = 0; index < lines.length; index++) {
-            var line = lines[index];
-            let match: RegExpMatchArray | null
+        for (let index = 0; index < lines.length; index++) {
+            let line = lines[index];
+            let match: RegExpMatchArray;
             if (match = this._linkPattern.exec(line)) {
                 let filePath = match[2];
                 const offset = match[1].length;
@@ -32,21 +34,21 @@ export class RequestBodyDocumentLinkProvider implements DocumentLinkProvider {
     }
 
     private normalizeLink(document: TextDocument, link: string, base: string): Uri {
-        const uri = Uri.parse(link);
-        if (uri.scheme) {
-            return uri;
-        }
-
-        // assume it must be a file
         let resourcePath;
-        if (!uri.path) {
-            resourcePath = document.uri.path;
-        } else if (uri.path[0] === '/') {
-            resourcePath = path.join(workspace.rootPath || '', uri.path);
+        if (path.isAbsolute(link)) {
+            resourcePath = link;
         } else {
-            resourcePath = path.join(base, uri.path);
+            let rootPath = getWorkspaceRootPath();
+            if (rootPath) {
+                resourcePath = path.join(rootPath, link);
+                if (!fs.existsSync(resourcePath)) {
+                    resourcePath = path.join(base, link);
+                }
+            } else {
+                resourcePath = path.join(base, link);
+            }
         }
 
-        return Uri.parse(`command:rest-client._openDocumentLink?${encodeURIComponent(JSON.stringify({ fragment: uri.fragment, path: resourcePath }))}`);
+        return Uri.parse(`command:rest-client._openDocumentLink?${encodeURIComponent(JSON.stringify({ path: resourcePath }))}`);
     }
 }

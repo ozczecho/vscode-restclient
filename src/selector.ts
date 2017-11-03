@@ -2,8 +2,11 @@
 
 import { TextEditor, Range } from 'vscode';
 import { EOL } from 'os';
+import * as Constants from './constants';
 
 export class Selector {
+    private static readonly responseStatusLineRegex = /^\s*HTTP\/[\d.]+/;
+
     public getSelectedText(editor: TextEditor, range: Range = null): string {
         if (!editor || !editor.document) {
             return null;
@@ -22,12 +25,28 @@ export class Selector {
 
     public static getDelimiterRows(lines: string[]) {
         let rows: number[] = [];
-        for (var index = 0; index < lines.length; index++) {
+        for (let index = 0; index < lines.length; index++) {
             if (lines[index].match(/^#{3,}/)) {
                 rows.push(index);
             }
         }
         return rows;
+    }
+
+    public static isCommentLine(line: string): boolean {
+        return Constants.CommentIdentifiersRegex.test(line);
+    }
+
+    public static isEmptyLine(line: string): boolean {
+        return line.trim() === '';
+    }
+
+    public static isVariableDefinitionLine(line: string): boolean {
+        return Constants.VariableDefinitionRegex.test(line);
+    }
+
+    public static isResponseStatusLine(line: string): boolean {
+        return Selector.responseStatusLineRegex.test(line);
     }
 
     private getDelimitedText(fullText: string, currentLine: number): string {
@@ -50,7 +69,7 @@ export class Selector {
             return lines.slice(delimiterLineNumbers[delimiterLineNumbers.length - 1] + 1).join(EOL);
         }
 
-        for (var index = 0; index < delimiterLineNumbers.length - 1; index++) {
+        for (let index = 0; index < delimiterLineNumbers.length - 1; index++) {
             let start = delimiterLineNumbers[index];
             let end = delimiterLineNumbers[index + 1];
             if (start < currentLine && currentLine < end) {

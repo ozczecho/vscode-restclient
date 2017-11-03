@@ -1,6 +1,6 @@
 "use strict";
 
-import { window, workspace } from 'vscode';
+import { window } from 'vscode';
 import { RestClientSettings } from './models/configurationSettings';
 import { HttpRequest } from './models/httpRequest';
 import { HttpResponse } from './models/httpResponse';
@@ -8,14 +8,15 @@ import { HttpResponseTimingPhases } from './models/httpResponseTimingPhases';
 import { HostCertificate } from './models/hostCertificate';
 import { PersistUtility } from './persistUtility';
 import { MimeUtility } from './mimeUtility';
+import { getWorkspaceRootPath } from './workspaceUtility';
 import * as url from 'url';
 import * as fs from 'fs';
 import * as path from 'path';
 
-var encodeUrl = require('encodeurl');
-var request = require('request');
-var cookieStore = require('tough-cookie-file-store');
-var iconv = require('iconv-lite');
+const encodeUrl = require('encodeurl');
+const request = require('request');
+const cookieStore = require('tough-cookie-file-store-bugfix');
+const iconv = require('iconv-lite');
 
 export class HttpClient {
     private _settings: RestClientSettings;
@@ -47,12 +48,13 @@ export class HttpClient {
             let scheme = authorization.substr(0, start);
             if (scheme === 'Digest' || scheme === 'Basic') {
                 let params = authorization.substr(start).trim().split(' ');
-                if (params.length === 2) {
+                let [user, pass] = params;
+                if (user && pass) {
                     options.auth = {
-                        user: params[0],
-                        pass: params[1],
+                        user,
+                        pass,
                         sendImmediately: scheme === 'Basic'
-                    }
+                    };
                 }
             }
         }
@@ -113,9 +115,9 @@ export class HttpClient {
                 }
 
                 // adjust response header case, due to the response headers in request package is in lowercase
-                var headersDic = HttpClient.getResponseRawHeaderNames(response.rawHeaders);
+                let headersDic = HttpClient.getResponseRawHeaderNames(response.rawHeaders);
                 let adjustedResponseHeaders: { [key: string]: string } = {};
-                for (var header in response.headers) {
+                for (let header in response.headers) {
                     let adjustedHeaderName = header;
                     if (headersDic[header]) {
                         adjustedHeaderName = headersDic[header];
@@ -142,6 +144,13 @@ export class HttpClient {
                         response.timingPhases.tcp,
                         response.timingPhases.firstByte,
                         response.timingPhases.download
+                    ),
+                    new HttpRequest(
+                        options.method,
+                        options.url,
+                        HttpClient.capitalizeHeaderName(response.toJSON().request.headers),
+                        httpRequest.body,
+                        httpRequest.rawBody
                     )));
             })
                 .on('data', function (data) {
@@ -152,13 +161,13 @@ export class HttpClient {
                         headersSize += response.rawHeaders.map(h => h.length).reduce((a, b) => a + b, 0);
                         headersSize += (response.rawHeaders.length) / 2;
                     }
-                })
+                });
         });
     }
 
     public static getHeaderValue(headers: { [key: string]: string }, headerName: string): string {
         if (headers) {
-            for (var key in headers) {
+            for (let key in headers) {
                 if (key.toLowerCase() === headerName.toLowerCase()) {
                     return headers[key];
                 }
@@ -220,21 +229,18 @@ export class HttpClient {
         let port = resolvedUrl.port;
         let excludeHostsProxyList = Array.from(new Set(excludeHostsForProxy.map(eh => eh.toLowerCase())));
 
-        for (var index = 0; index < excludeHostsProxyList.length; index++) {
-            var eh = excludeHostsProxyList[index];
+        for (let index = 0; index < excludeHostsProxyList.length; index++) {
+            let eh = excludeHostsProxyList[index];
             let urlParts = eh.split(":");
             if (!port) {
                 // if no port specified in request url, host name must exactly match
                 if (urlParts.length === 1 && urlParts[0] === hostName) {
-                    return true
+                    return true;
                 };
             } else {
                 // if port specified, match host without port or hostname:port exactly match
-                if (urlParts.length === 1 && urlParts[0] === hostName) {
-                    return true;
-                } else if (urlParts.length === 2 && urlParts[0] === hostName && urlParts[1] === port) {
-                    return true;
-                }
+                let [ph, pp] = urlParts;
+                return ph === hostName && (!pp || pp === port);
             }
         }
 
@@ -252,9 +258,10 @@ export class HttpClient {
         }
 
         // the path should be relative path
-        var rootPath = workspace.rootPath;
+        let rootPath = getWorkspaceRootPath();
+        let absolutePath = '';
         if (rootPath) {
-            var absolutePath = path.join(rootPath, absoluteOrRelativePath);
+            absolutePath = path.join(rootPath, absoluteOrRelativePath);
             if (fs.existsSync(absolutePath)) {
                 return absolutePath;
             } else {
@@ -270,5 +277,17 @@ export class HttpClient {
             window.showWarningMessage(`Certificate path ${absoluteOrRelativePath} of ${certName} doesn't exist, please make sure it exists.`);
             return;
         }
+    }
+
+    private static capitalizeHeaderName(headers: { [key: string]: string }): { [key: string]: string } {
+        let normalizedHeaders = {};
+        if (headers) {
+            for (let header in headers) {
+                let capitalizedName = header.replace(/([^-]+)/g, h => h.charAt(0).toUpperCase() + h.slice(1));
+                normalizedHeaders[capitalizedName] = headers[header];
+            }
+        }
+
+        return normalizedHeaders;
     }
 }

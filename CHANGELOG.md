@@ -1,3 +1,31 @@
+## 0.16.0 (2017/10/30)
+* __Feature__: [Support goto symbols(request or file level cusom variable) in http file](https://github.com/Huachao/vscode-restclient/issues/126)
+* __Improvement__: [Info/Warning notifications blocking all tabs](https://github.com/Huachao/vscode-restclient/issues/99)
+* __Improvement__: Adopt multi root workspace API
+* __Improvement__: Update README.md to reflect installation and code lens update
+* __Bug Fix__: Set the scheme to `https` if host is of port 443
+
+## 0.15.3 (2017/9/26)
+* __Bug Fix__: [Info/Warning notifications blocking all tabs](https://github.com/Huachao/vscode-restclient/issues/119)
+* __Bug Fix__: [cURL -d option not working properly with @](https://github.com/Huachao/vscode-restclient/issues/120)
+* __Improvement__: [Info/Warning notifications blocking all tabs](https://github.com/Huachao/vscode-restclient/issues/99)
+
+## 0.15.2 (2017/8/22)
+* __Breaking Change__ [Remap keybinding of _Cancel Request_ from `Ctrl/Cmd+Alt+Q` to `Ctrl/Cmd+Alt+K`](https://github.com/Huachao/vscode-restclient/issues/115)
+* __Bug Fix__: [Missing parameters in CURL/POST body](https://github.com/Huachao/vscode-restclient/issues/112)
+* __Bug Fix__: Add telemetry events for copy commands
+* __Bug Fix (Partial)__: [Fix request body file path click bug in _Windows_](https://github.com/Huachao/vscode-restclient/issues/110)
+* __Bug Fix (Partial)__: [Allow cookie path ends with trailing slash](https://github.com/Huachao/vscode-restclient/issues/113)
+* __Bug Fix (Partial)__: [Update README.md to include the details of supported curl options](https://github.com/Huachao/vscode-restclient/issues/113)
+
+## 0.15.1 (2017/8/3)
+* __Bug Fix__: Fix autocompletion not working
+* __Improvement__: Add backslash to escape special character(`\n`, `\r` and `\t`)
+
+## 0.15.0 (2017/7/28)
+* __Feature__: [Define variables inside of HTTP file](https://github.com/Huachao/vscode-restclient/issues/84)
+* __Bug Fix__: ["Generate code snippet" does not include the POST body when Content-Type: application/x-www-form-urlencoded](https://github.com/Huachao/vscode-restclient/issues/105)
+
 ## 0.14.6 (2017/6/28)
 * __Bug Fix__: ["Generate code snippet" does not include the POST body when Content-Type: application/x-www-form-urlencoded](https://github.com/Huachao/vscode-restclient/issues/105)
 * __Bug Fix__: [Save cURL into clipboard](https://github.com/Huachao/vscode-restclient/issues/100)

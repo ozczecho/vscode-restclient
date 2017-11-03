@@ -5,11 +5,13 @@ import { RestClientSettings } from '../models/configurationSettings';
 import { EnvironmentPickItem } from '../models/environmentPickItem';
 import { PersistUtility } from '../persistUtility';
 import * as Constants from '../constants';
-import { Telemetry } from '../telemetry';
+import { trace } from "../decorator";
 
 export class EnvironmentController {
-    public static noEnvironmentPickItem: EnvironmentPickItem = new EnvironmentPickItem(
-        'No Environment', Constants.NoEnvironmentSelectedName, 'DO NOT Use Any Environment');
+    private static readonly noEnvironmentPickItem: EnvironmentPickItem = new EnvironmentPickItem(
+        'No Environment', Constants.NoEnvironmentSelectedName, 'You Can Still Use Variables Defined In $shared Environment');
+
+    private static readonly sharedEnvironmentName: string = '$shared';
 
     private _environmentStatusBarItem: StatusBarItem;
     private _restClientSettings: RestClientSettings;
@@ -23,12 +25,15 @@ export class EnvironmentController {
         this._restClientSettings = new RestClientSettings();
     }
 
+    @trace('Switch Environment')
     public async switchEnvironment() {
-        Telemetry.sendEvent('Switch Environment');
         let currentEnvironment = await EnvironmentController.getCurrentEnvironment();
         let itemPickList: EnvironmentPickItem[] = [];
         itemPickList.push(EnvironmentController.noEnvironmentPickItem);
-        for (var name in this._restClientSettings.environmentVariables) {
+        for (let name in this._restClientSettings.environmentVariables) {
+            if (name === EnvironmentController.sharedEnvironmentName) {
+                continue;
+            }
             let item = new EnvironmentPickItem(name, name);
             if (item.name === currentEnvironment.name) {
                 item.description = '$(check)';
@@ -61,13 +66,18 @@ export class EnvironmentController {
         }
 
         let settings = new RestClientSettings();
-        for (var environmentName in settings.environmentVariables) {
-            if (environmentName === environment.name) {
-                return settings.environmentVariables[environmentName];
-            }
-        }
+        let environments = settings.environmentVariables;
+        let variables = {};
+        Object.assign(
+            variables,
+            environments[EnvironmentController.sharedEnvironmentName] || {},
+            environments[environment.name] || {});
 
-        return new Map<string, string>();
+        const map = new Map<string, string>();
+        Object.keys(variables).forEach(key => {
+            map.set(key, variables[key]);
+        });
+        return map;
     }
 
     public dispose() {

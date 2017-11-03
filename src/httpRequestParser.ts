@@ -1,22 +1,23 @@
 "use strict";
 
-import { workspace } from 'vscode';
+import { ArrayUtility } from './common/arrayUtility';
 import { HttpRequest } from './models/httpRequest';
 import { IRequestParser } from './models/IRequestParser';
 import { RequestParserUtil } from './requestParserUtil';
 import { HttpClient } from './httpClient';
 import { MimeUtility } from './mimeUtility';
+import { getWorkspaceRootPath } from './workspaceUtility';
 import { EOL } from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Stream } from 'stream';
 
-var CombinedStream = require('combined-stream');
-var encodeurl = require('encodeurl');
+const CombinedStream = require('combined-stream');
+const encodeurl = require('encodeurl');
 
 export class HttpRequestParser implements IRequestParser {
     private static readonly defaultMethod = 'GET';
-    private static readonly uploadFromFileSyntax: RegExp = new RegExp('^\<[ \t]+([^ \t]*)[ \t]*$');
+    private static readonly uploadFromFileSyntax = /^<\s+([\S]*)\s*$/;
 
     public parseHttpRequest(requestRawText: string, requestAbsoluteFilePath: string, parseFileContentAsStream: boolean): HttpRequest {
         // parse follows http://www.w3.org/Protocols/rfc2616/rfc2616-sec5.html
@@ -24,10 +25,10 @@ export class HttpRequestParser implements IRequestParser {
         let lines: string[] = requestRawText.split(EOL);
 
         // skip leading empty lines
-        lines = HttpRequestParser.skipWhile(lines, value => value.trim() === '');
+        lines = ArrayUtility.skipWhile(lines, value => value.trim() === '');
 
         // skip trailing empty lines
-        lines = HttpRequestParser.skipWhile(lines.reverse(), value => value.trim() === '').reverse();
+        lines = ArrayUtility.skipWhile(lines.reverse(), value => value.trim() === '').reverse();
 
         if (lines.length === 0) {
             return null;
@@ -40,16 +41,16 @@ export class HttpRequestParser implements IRequestParser {
         let headers: { [key: string]: string };
         let body: string | Stream;
         let bodyLines: string[] = [];
-        let headerStartLine = HttpRequestParser.firstIndexOf(lines, value => value.trim() !== '', 1);
+        let headerStartLine = ArrayUtility.firstIndexOf(lines, value => value.trim() !== '', 1);
         if (headerStartLine !== -1) {
             if (headerStartLine === 1) {
                 // parse request headers
-                let firstEmptyLine = HttpRequestParser.firstIndexOf(lines, value => value.trim() === '', headerStartLine);
+                let firstEmptyLine = ArrayUtility.firstIndexOf(lines, value => value.trim() === '', headerStartLine);
                 let headerEndLine = firstEmptyLine === -1 ? lines.length : firstEmptyLine;
                 let headerLines = lines.slice(headerStartLine, headerEndLine);
                 let index = 0;
                 let queryString = '';
-                for (; index < headerLines.length;) {
+                for (; index < headerLines.length; ) {
                     let headerLine = (headerLines[index]).trim();
                     if (headerLine[0] in { '?': '', '&': '' } && headerLine.split('=').length === 2) {
                         queryString += headerLine;
@@ -65,16 +66,16 @@ export class HttpRequestParser implements IRequestParser {
                 headers = RequestParserUtil.parseRequestHeaders(headerLines.slice(index));
 
                 // get body range
-                let bodyStartLine = HttpRequestParser.firstIndexOf(lines, value => value.trim() !== '', headerEndLine);
+                let bodyStartLine = ArrayUtility.firstIndexOf(lines, value => value.trim() !== '', headerEndLine);
                 if (bodyStartLine !== -1) {
                     let contentTypeHeader = HttpRequestParser.getContentTypeHeader(headers);
-                    firstEmptyLine = HttpRequestParser.firstIndexOf(lines, value => value.trim() === '', bodyStartLine);
+                    firstEmptyLine = ArrayUtility.firstIndexOf(lines, value => value.trim() === '', bodyStartLine);
                     let bodyEndLine = MimeUtility.isMultiPartFormData(contentTypeHeader) || firstEmptyLine === -1 ? lines.length : firstEmptyLine;
                     bodyLines = lines.slice(bodyStartLine, bodyEndLine);
                 }
             } else {
                 // parse body, since no headers provided
-                let firstEmptyLine = HttpRequestParser.firstIndexOf(lines, value => value.trim() === '', headerStartLine);
+                let firstEmptyLine = ArrayUtility.firstIndexOf(lines, value => value.trim() === '', headerStartLine);
                 let bodyEndLine = firstEmptyLine === -1 ? lines.length : firstEmptyLine;
                 bodyLines = lines.slice(headerStartLine, bodyEndLine);
             }
@@ -82,7 +83,10 @@ export class HttpRequestParser implements IRequestParser {
 
         // if Host header provided and url is relative path, change to absolute url
         if (HttpClient.getHeaderValue(headers, 'Host') && requestLine.url[0] === '/') {
-            requestLine.url = `http://${HttpClient.getHeaderValue(headers, 'Host')}${requestLine.url}`;
+            let host = HttpClient.getHeaderValue(headers, 'Host');
+            let [, port] = host.split(':');
+            let scheme = port === '443' ? 'https' : 'http';
+            requestLine.url = `${scheme}://${host}${requestLine.url}`;
         }
 
         // parse body
@@ -131,13 +135,13 @@ export class HttpRequestParser implements IRequestParser {
             return lines.join(EOL);
         } else {
             if (parseFileContentAsStream) {
-                var combinedStream = CombinedStream.create({ maxDataSize: 10 * 1024 * 1024 });
+                let combinedStream = CombinedStream.create({ maxDataSize: 10 * 1024 * 1024 });
                 lines.forEach(line => {
                     if (HttpRequestParser.uploadFromFileSyntax.test(line)) {
                         let groups = HttpRequestParser.uploadFromFileSyntax.exec(line);
                         if (groups !== null && groups.length === 2) {
                             let fileUploadPath = groups[1];
-                            var fileAbsolutePath = HttpRequestParser.resolveFilePath(fileUploadPath, requestFileAbsolutePath);
+                            let fileAbsolutePath = HttpRequestParser.resolveFilePath(fileUploadPath, requestFileAbsolutePath);
                             if (fileAbsolutePath && fs.existsSync(fileAbsolutePath)) {
                                 combinedStream.append(fs.createReadStream(fileAbsolutePath));
                             } else {
@@ -159,7 +163,7 @@ export class HttpRequestParser implements IRequestParser {
                         let groups = HttpRequestParser.uploadFromFileSyntax.exec(line);
                         if (groups !== null && groups.length === 2) {
                             let fileUploadPath = groups[1];
-                            var fileAbsolutePath = HttpRequestParser.resolveFilePath(fileUploadPath, requestFileAbsolutePath);
+                            let fileAbsolutePath = HttpRequestParser.resolveFilePath(fileUploadPath, requestFileAbsolutePath);
                             if (fileAbsolutePath && fs.existsSync(fileAbsolutePath)) {
                                 contents.push(fs.readFileSync(fileAbsolutePath));
                             } else {
@@ -185,9 +189,10 @@ export class HttpRequestParser implements IRequestParser {
             return fs.existsSync(refPath) ? refPath : null;
         }
 
-        var rootPath = workspace.rootPath;
+        let absolutePath;
+        let rootPath = getWorkspaceRootPath();
         if (rootPath) {
-            var absolutePath = path.join(rootPath, refPath);
+            absolutePath = path.join(rootPath, refPath);
             if (fs.existsSync(absolutePath)) {
                 return absolutePath;
             }
@@ -203,7 +208,7 @@ export class HttpRequestParser implements IRequestParser {
 
     private static getContentTypeHeader(headers: { [key: string]: string }) {
         if (headers) {
-            for (var header in headers) {
+            for (let header in headers) {
                 if (header.toLowerCase() === 'content-type') {
                     return headers[header];
                 }
@@ -211,30 +216,5 @@ export class HttpRequestParser implements IRequestParser {
         }
 
         return null;
-    }
-
-    private static skipWhile<T>(items: T[], callbackfn: (value: T, index: number, array: T[]) => boolean): T[] {
-        for (var index = 0; index < items.length; index++) {
-            if (!callbackfn(items[index], index, items)) {
-                break;
-            }
-        }
-
-        return items.slice(index);
-    };
-
-    private static firstIndexOf<T>(items: T[], callbackfn: (value: T, index: number, array: T[]) => boolean, start?: number): number {
-        if (!start) {
-            start = 0;
-        }
-
-        let index = start;
-        for (; index < items.length; index++) {
-            if (callbackfn(items[index], index, items)) {
-                break;
-            }
-        }
-
-        return index >= items.length ? -1 : index;
     }
 }
