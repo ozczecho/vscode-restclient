@@ -1,14 +1,34 @@
+## 0.17.0 (2018/1/30)
+* __Feature__: [Add Azure Active Directory Support](https://github.com/Huachao/vscode-restclient/pulls/150) ([@flanakin](https://github.com/flanakin/))
+* __Feature__: [Highlight JSON/XML request body automatically](https://github.com/Huachao/vscode-restclient/issues/135)
+* __Feature__: [Add settings to disable response formatting and link recognition for large response](https://github.com/Huachao/vscode-restclient/issues/147)
+* __Improvement__: Refactor sending request body from specified file path logic
+* __Improvement__: Add _8443_ port as _https_ scheme indicator
+* __Improvement__: Support `--data-ascii` option in curl
+
+## 0.16.2 (2017/12/22)
+* __Feature__: Add custom variable references codelens
+* __Bug Fix__: [In single line query string mode, continuous whitespaces were collapsed into one](https://github.com/Huachao/vscode-restclient/issues/143)
+* __Bug Fix__: [In multiple lines query string mode, query parameter without '=' and value is ignored](https://github.com/Huachao/vscode-restclient/issues/144)
+* __Bug Fix__: Recognize indented request headers
+* __Improvement__: [Allow hiding switch environment status bar item via settings](https://github.com/Huachao/vscode-restclient/pull/142) ([@VFK](https://github.com/VFK/))
+* __Improvement__: Update `ECONNREFUSED` error message to hint possible incorrect proxy setting
+* __Improvement__: Use pure delimiter lines as folding boundary
+
+## 0.16.1 (2017/11/17)
+* __Feature__: [Support shared variables can be used across all the environments](https://github.com/Huachao/vscode-restclient/issues/128)
+* __Feature__: [Request block fold/unfold feature in .http/.rest file](https://github.com/Huachao/vscode-restclient/issues/139)
+
 ## 0.16.0 (2017/10/30)
-* __Feature__: [Support goto symbols(request or file level cusom variable) in http file](https://github.com/Huachao/vscode-restclient/issues/126)
-* __Improvement__: [Info/Warning notifications blocking all tabs](https://github.com/Huachao/vscode-restclient/issues/99)
-* __Improvement__: Adopt multi root workspace API
-* __Improvement__: Update README.md to reflect installation and code lens update
+* __Feature__: [Support goto symbols(request or file level custom variable) in http file](https://github.com/Huachao/vscode-restclient/issues/126)
 * __Bug Fix__: Set the scheme to `https` if host is of port 443
+* __Improvement__: [Adopt multi root workspace API](https://github.com/Huachao/vscode-restclient/issues/133)
+* __Improvement__: Update README.md to reflect installation and code lens update
 
 ## 0.15.3 (2017/9/26)
 * __Bug Fix__: [Info/Warning notifications blocking all tabs](https://github.com/Huachao/vscode-restclient/issues/119)
 * __Bug Fix__: [cURL -d option not working properly with @](https://github.com/Huachao/vscode-restclient/issues/120)
-* __Improvement__: [Info/Warning notifications blocking all tabs](https://github.com/Huachao/vscode-restclient/issues/99)
+* __Improvement__: [Show request headers as well as response](https://github.com/Huachao/vscode-restclient/issues/99)
 
 ## 0.15.2 (2017/8/22)
 * __Breaking Change__ [Remap keybinding of _Cancel Request_ from `Ctrl/Cmd+Alt+Q` to `Ctrl/Cmd+Alt+K`](https://github.com/Huachao/vscode-restclient/issues/115)
@@ -42,7 +62,7 @@
 ## 0.14.3 (2017/5/12)
 * __Bug Fix__: [Performance issue when rendering large response](https://github.com/Huachao/vscode-restclient/issues/59), [cannot show raw big-data](https://github.com/Huachao/vscode-restclient/issues/94)
 * __Bug Fix__: Fix bug to allow generate code snippet for `cURL`, `httpie` and `wget`
-* __Improvement__: [use new vscode api to preview untitled document](https://github.com/Huachao/vscode-restclient/pull/93) [(@dakaraphi)](https://github.com/dakaraphi/)
+* __Improvement__: [use new vscode api to preview untitled document](https://github.com/Huachao/vscode-restclient/pull/93) ([@dakaraphi](https://github.com/dakaraphi/))
 
 ## 0.14.2 (2017/5/3)
 * __Bug Fix__: Fix MIME types autocompletion bug
@@ -51,15 +71,15 @@
 
 ## 0.14.1 (2017/4/7)
 * __Bug Fix__: [Could not resolve any model with provided uri](https://github.com/Huachao/vscode-restclient/issues/90)
-* __Improvement__: [Icon redesign](https://github.com/Huachao/vscode-restclient/pull/87) [(@pluwen)](https://github.com/pluwen)
-* __Improvement__: [Switch to new API for opening editor](https://github.com/Huachao/vscode-restclient/pull/89) [(@dakaraphi)](https://github.com/dakaraphi/)
+* __Improvement__: [Icon redesign](https://github.com/Huachao/vscode-restclient/pull/87) ([@pluwen](https://github.com/pluwen))
+* __Improvement__: [Switch to new API for opening editor](https://github.com/Huachao/vscode-restclient/pull/89) ([@dakaraphi](https://github.com/dakaraphi/))
 
 ## 0.14.0 (2017/4/3)
 * __Feature__: [Support Digest Authentication](https://github.com/Huachao/vscode-restclient/issues/61)
 * __Feature__: [Support client side certificate authentication](https://github.com/Huachao/vscode-restclient/issues/35)
 * __Bug Fix__: [Fix showResponseInDifferentTab doesn't work](https://github.com/Huachao/vscode-restclient/issues/81)
 * __Improvement__: Add setting to the trunked transfer encoding for sending file content as request body
-* __Improvement__: [Allow to preview response body only in untitled document](https://github.com/Huachao/vscode-restclient/pull/82) [(@dakaraphi)](https://github.com/dakaraphi/)
+* __Improvement__: [Allow to preview response body only in untitled document](https://github.com/Huachao/vscode-restclient/pull/82) ([@dakaraphi](https://github.com/dakaraphi/))
 * __Improvement__: Format response body whose suffix of content type header is json
 
 ## 0.13.0 (2017/3/20)
@@ -130,7 +150,7 @@
 * __Bug Fix__: [Add setting to ignore some proxy hosts](https://github.com/Huachao/vscode-restclient/issues/47)
 
 ## 0.10.2 (2016/11/8)
-* __Improvement__: [Add snippets for DELETE and PUT requests](https://github.com/Huachao/vscode-restclient/pull/45) [(@Meir017)](https://github.com/Meir017/)
+* __Improvement__: [Add snippets for DELETE and PUT requests](https://github.com/Huachao/vscode-restclient/pull/45) ([@Meir017](https://github.com/Meir017/))
 * __Bug Fix__: [Cannot read property 'trim' of undefined](https://github.com/Huachao/vscode-restclient/issues/46)
 
 ## 0.10.1 (2016/11/7)
@@ -143,7 +163,7 @@
 * __Feature__: Support generate code snippets for various languages and libraries
 * __Improvement__: Allow copy saved response path
 * __Improvement__: Add description for HTTP headers in autocompletion
-* __Bug Fix__: Use comma to concat multiple cookies 
+* __Bug Fix__: Use comma to concat multiple cookies
 
 ## 0.9.0 (2016/10/25)
 * __Feature__: Add clear history command
@@ -173,7 +193,7 @@
 * __Bug Fix__: [Encode non-ASCII characters in URL](https://github.com/Huachao/vscode-restclient/issues/36)
 
 ## 0.8.1 (2016/9/21)
-* __Bug Fix__: [Fix command 'rest-client.request' not found on Linux](https://github.com/Huachao/vscode-restclient/issues/38) [(@myakimov)](https://github.com/myakimov)
+* __Bug Fix__: [Fix command 'rest-client.request' not found on Linux](https://github.com/Huachao/vscode-restclient/issues/38) ([@myakimov](https://github.com/myakimov))
 
 ## 0.8.0 (2016/9/20)
 * __Feature__: [Support global system dynamic variables](https://github.com/Huachao/vscode-restclient/issues/22)
@@ -191,8 +211,8 @@
 * __Bug Fix__: [Allow request without headers](https://github.com/Huachao/vscode-restclient/issues/32)
 
 ## 0.7.2 (2016/8/17)
-* __Improvement__: [Add loading icon in status bar](https://github.com/Huachao/vscode-restclient/issues/13)
 * __Feature__: Support comment shortcut, request body indentation and auto closing brackets
+* __Improvement__: [Add loading icon in status bar](https://github.com/Huachao/vscode-restclient/issues/13)
 
 ## 0.7.1 (2016/8/9)
 * __Bug Fix__: [Filter comments start with white spaces](https://github.com/Huachao/vscode-restclient/issues/28)
@@ -200,7 +220,7 @@
 
 ## 0.7.0 (2016/8/3)
 * __Feature__: [Support Cookies](https://github.com/Huachao/vscode-restclient/issues/8)
-* __Feature__: [Proxy Support](https://github.com/Huachao/vscode-restclient/issues/25) [(@mad-mike)](https://github.com/mad-mike/)
+* __Feature__: [Proxy Support](https://github.com/Huachao/vscode-restclient/issues/25) ([@mad-mike](https://github.com/mad-mike/))
 * __Improvement__: [Wrap long strings in preview tab](https://github.com/Huachao/vscode-restclient/issues/24)
 
 ## 0.6.3 (2016/8/1)
@@ -214,7 +234,7 @@
 * __Bug Fix__: Update README to reflect latest changes
 
 ## 0.6.0 (2016/7/21)
-* __Bug Fix__: Preview response with css file which takes theme style into consideration. Fix the issue [avoid the white background](https://github.com/Huachao/vscode-restclient/issues/12) 
+* __Bug Fix__: Preview response with css file which takes theme style into consideration. Fix the issue [avoid the white background](https://github.com/Huachao/vscode-restclient/issues/12)
 
 ## 0.5.5 (2016/7/20)
 * __Bug Fix__: [Allow host header in request headers](https://github.com/Huachao/vscode-restclient/issues/10)
@@ -250,7 +270,7 @@
 * __Bug Fix__: Getting history request items from previous versions
 
 ## 0.2.1 (2016/5/18)
-* __Feature__: Timeout in milliseconds, less or equal than 0 represents for infinity, default is `0` 
+* __Feature__: Timeout in milliseconds, less or equal than 0 represents for infinity, default is `0`
 
 ## 0.2.0 (2016/4/27)
 * __Feature__: Add http request history
