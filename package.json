@@ -2,7 +2,7 @@
   "name": "rest-client",
   "displayName": "REST Client",
   "description": "REST Client for Visual Studio Code",
-  "version": "0.17.1-mike",
+  "version": "0.18.21-mike",
   "publisher": "humao",
   "author": {
     "name": "Huachao Mao",
@@ -337,7 +337,9 @@
         },
         "rest-client.environmentVariables": {
           "type": "object",
-          "default": {"$shared": {}},
+          "default": {
+            "$shared": {}
+          },
           "scope": "resource",
           "description": "Sets the environments and custom variables belongs to it, especially the special environment name '$shared' is used to create variables shared across all the individual environments (e.g., {\"$shared\": {\"version\": \"v1\"}, \"production\": {\"host\": \"api.example.com\"}, \"sandbox\":{\"host\":\"sandbox.api.example.com\"}})",
           "additionalProperties": {
@@ -473,6 +475,12 @@
           "exclusiveMinimum": true,
           "scope": "resource",
           "description": "Set the response body size threshold of MB to identify whether a response is a so-called 'large response', only used when 'rest-client.disableHighlightResonseBodyForLargeResponse' and/or 'rest-client.disableAddingHrefLinkForLargeResponse' is set to true"
+        },
+        "rest-client.previewResponseInActiveColumn": {
+          "type": "boolean",
+          "default": false,
+          "scope": "resource",
+          "description": "Preview response in current active column"
         }
       }
     }
@@ -484,17 +492,17 @@
     "tslint": "tslint --project tsconfig.json"
   },
   "devDependencies": {
-    "@types/crypto-js": "^3.1.33",
+    "@types/fs-extra": "^5.0.1",
     "@types/mocha": "^2.2.32",
     "@types/node": "^6.0.63",
     "mocha": "^3.2.0",
     "tslint": "^4.2.0",
     "typescript": "^2.6.2",
-    "vscode": "^1.0.0"
+    "vscode": "^1.1.14"
   },
   "dependencies": {
     "adal-node": "^0.1.26",
-    "applicationinsights": "^0.18.0",
+    "applicationinsights": "^1.0.2",
     "autolinker": "^1.4.0",
     "code-highlight-linenums": "^0.2.1",
     "combined-stream": "^1.0.5",
@@ -503,9 +511,12 @@
     "elegant-spinner": "^1.0.1",
     "encodeurl": "^1.0.1",
     "filesize": "^3.3.0",
+    "fs-extra": "^5.0.0",
     "highlight.js": "^9.6.0",
     "httpsnippet": "^1.16.5",
     "iconv-lite": "^0.4.15",
+    "jsonc-parser": "^1.0.3",
+    "jsonpath": "^1.0.0",
     "mime-types": "^2.1.14",
     "moment": "^2.20.1",
     "node-uuid": "^1.4.7",
@@ -513,6 +524,8 @@
     "request": "^2.81.0",
     "tmp": "^0.0.31",
     "tough-cookie-file-store-bugfix": "Huachao/tough-cookie-file-store-bugfix",
+    "xmldom": "^0.1.27",
+    "xpath": "0.0.27",
     "yargs": "^6.0.0"
   }
 }

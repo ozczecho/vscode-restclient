@@ -1,10 +1,13 @@
 "use strict";
 
+import { Uri } from 'vscode';
+import { Headers } from './models/base';
 import { HttpRequest } from './models/httpRequest';
 import { IRequestParser } from './models/IRequestParser';
 import { RequestParserUtil } from './requestParserUtil';
 import { getWorkspaceRootPath } from './workspaceUtility';
-import * as fs from 'fs';
+import { hasHeader } from './misc';
+import * as fs from 'fs-extra';
 import * as path from 'path';
 
 const yargs = require('yargs');
@@ -29,7 +32,7 @@ export class CurlRequestParser implements IRequestParser {
         }
 
         // parse header
-        let headers: { [key: string]: string } = {};
+        let headers: Headers = {};
         let parsedHeaders = parsedArguments.H || parsedArguments.header;
         if (parsedHeaders) {
             if (!Array.isArray(parsedHeaders)) {
@@ -66,7 +69,7 @@ export class CurlRequestParser implements IRequestParser {
         }
 
         // Set Content-Type header to application/x-www-form-urlencoded if has body and missing this header
-        if (body && !CurlRequestParser.hasContentTypeHeader(headers)) {
+        if (body && !hasHeader(headers, 'content-type')) {
             headers['Content-Type'] = DefaultContentType;
         }
 
@@ -87,7 +90,7 @@ export class CurlRequestParser implements IRequestParser {
         let rootPath = getWorkspaceRootPath();
         let absolutePath;
         if (rootPath) {
-            absolutePath = path.join(rootPath, refPath);
+            absolutePath = path.join(Uri.parse(rootPath).fsPath, refPath);
             if (fs.existsSync(absolutePath)) {
                 return absolutePath;
             }
@@ -107,15 +110,5 @@ export class CurlRequestParser implements IRequestParser {
 
     private static mergeMultipleSpacesIntoSingle(text: string): string {
         return text.replace(/\s{2,}/g, ' ');
-    }
-
-    private static hasContentTypeHeader(headers: { [key: string]: string }): boolean {
-        for (let header in headers) {
-            if (header.toLowerCase() === 'content-type') {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

@@ -1,18 +1,24 @@
 'use strict';
 
-import { commands, QuickPickItem, QuickPickOptions, Uri, window } from 'vscode';
+import { commands, QuickPickItem, QuickPickOptions, Uri, window, TextDocument } from 'vscode';
 import { EnvironmentController } from './controllers/environmentController';
-import * as Constants from './constants';
+import * as Constants from "./constants";
 import { Func } from './common/delegates';
+import { RequestVariableCache } from "./requestVariableCache";
+import { RequestVariableCacheKey } from "./models/requestVariableCacheKey";
+import { RequestVariableCacheValueProcessor } from "./requestVariableCacheValueProcessor";
 import { HttpClient } from './httpClient';
 import { HttpRequest } from './models/httpRequest';
 import { RestClientSettings } from './models/configurationSettings';
+import { RequestVariableCacheValue } from "./models/requestVariableCacheValue";
+import { VariableType } from "./models/variableType";
+import { ResolveState } from "./models/requestVariableResolveResult";
 import * as adal from 'adal-node';
-import * as moment from 'moment';
+import { Moment, DurationInputArg2, utc } from "moment";
 const copyPaste = require('copy-paste');
 const uuid = require('node-uuid');
 
-const aadRegexPattern = `\\{\\{\\s*\\${Constants.AzureActiveDirectoryVariableName}(\\s+(${Constants.AzureActiveDirectoryForceNewOption}))?(\\s+(ppe|public|cn|de|us))?(\\s+([^\\.]+\\.[^\\}\\s]+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}))?\\s*\\}\\}`;
+const aadRegexPattern = `\\{\\{\\s*\\${Constants.AzureActiveDirectoryVariableName}(\\s+(${Constants.AzureActiveDirectoryForceNewOption}))?(\\s+(ppe|public|cn|de|us))?(\\s+([^\\.]+\\.[^\\}\\s]+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}))?(\\s+aud:([^\\.]+\\.[^\\}\\s]+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}))?\\s*\\}\\}`;
 const aadTokenCache = {};
 
 export class VariableProcessor {
@@ -29,6 +35,33 @@ export class VariableProcessor {
             let regex = new RegExp(`\\{\\{\\s*${variablePattern}\\s*\\}\\}`, 'g');
             if (regex.test(request)) {
                 request = request.replace(regex, globalVariables[variablePattern]);
+            }
+        }
+
+        let requestVariables = VariableProcessor.getRequestVariablesInCurrentFile();
+        for (let [variableName, variableValue] of requestVariables) {
+            let regex = new RegExp(`\\{\\{\\s*${variableName}.*?\\s*\\}\\}`, 'g');
+            let matches = request.match(regex);
+            if (matches && matches.length > 0) {
+                for (let i = 0; i < matches.length; i++) {
+                    const requestVariable = matches[i].replace('{{', '').replace('}}', '');
+                    let value;
+                    let result = RequestVariableCacheValueProcessor.resolveRequestVariable(variableValue, requestVariable);
+                    if (result.state !== ResolveState.Success) {
+                        const {state, message} = result;
+                        value = `{{${requestVariable}}}`;
+                        if (state === ResolveState.Warning) {
+                            console.warn(message);
+                        } else {
+                            console.error(message);
+                        }
+                    } else {
+                        value = result.value;
+                    }
+
+                    const escapedVariable = VariableProcessor.escapeRegExp(requestVariable);
+                    request = request.replace(new RegExp(`\\{\\{\\s*${escapedVariable}\\s*\\}\\}`, 'g'), value);
+                }
             }
         }
 
@@ -92,7 +125,7 @@ export class VariableProcessor {
             cloud = targetApp.substring(targetApp.lastIndexOf(".") + 1, targetApp.length - 1);
         }
 
-        // parse input options -- [new] [public|cn|de|us|ppe] [<domain|tenantId>]
+        // parse input options -- [new] [public|cn|de|us|ppe] [<domain|tenantId>] [aud:<domain|tenantId>]
         let tenantId = Constants.AzureActiveDirectoryDefaultTenantId;
         let forceNewToken = false;
         const groups = new RegExp(aadRegexPattern).exec(url);
@@ -100,6 +133,7 @@ export class VariableProcessor {
             forceNewToken = groups[2] === Constants.AzureActiveDirectoryForceNewOption;
             cloud = groups[4] || cloud;
             tenantId = groups[6] || tenantId;
+            targetApp = groups[8] || targetApp;
         }
 
         // verify cloud (default to public)
@@ -236,13 +270,8 @@ export class VariableProcessor {
 
                                             // use the first match in the array of matches
                                             domain = bestMatches.find(m => m) || domain;
-                                        } catch (e) {
-                                            /**
-                                             * Source: Anything
-                                             * Reason: Anything
-                                             * Action: Ignore
-                                             */
-                                         }
+                                        } catch {
+                                        }
                                         domain = `${domain} (+${count - 1} more)`;
                                     }
 
@@ -308,8 +337,23 @@ export class VariableProcessor {
                 let groups = regex.exec(match);
                 if (groups !== null && groups.length === 3) {
                     return groups[1] && groups[2]
-                        ? moment.utc().add(Number(groups[1]), <moment.DurationInputArg2>groups[2]).unix()
-                        : moment.utc().unix();
+                        ? utc().add(Number(groups[1]), <DurationInputArg2>groups[2]).unix()
+                        : utc().unix();
+                }
+                return match;
+            },
+            [`\\${Constants.DateTimeVariableName}(?:\\s(rfc1123|iso8601)?(?:\\s(\\-?\\d+)\\s(y|Q|M|w|d|h|m|s|ms))?)?`]: match => {
+                let regex = new RegExp(`\\${Constants.DateTimeVariableName}(?:\\s(rfc1123|iso8601)?(?:\\s(\\-?\\d+)\\s(y|Q|M|w|d|h|m|s|ms))?)?`);
+                let groups = regex.exec(match);
+                if (groups !== null && groups.length === 4) {
+                    let date: Moment;
+                    if (groups[2] && groups[3]) {
+                        date = utc().add(Number(groups[2]), <DurationInputArg2>groups[3]);
+                    } else {
+                        date = utc();
+                    }
+
+                    return groups[1] === 'rfc1123' ? date.toString() : date.toISOString();
                 }
                 return match;
             },
@@ -332,14 +376,19 @@ export class VariableProcessor {
     }
 
     public static getCustomVariablesInCurrentFile(): Map<string, string> {
-        let variables = new Map<string, string>();
         let editor = window.activeTextEditor;
         if (!editor || !editor.document) {
-            return variables;
+            return new Map<string, string>();
         }
 
-        let document = editor.document.getText();
-        let lines: string[] = document.split(/\r?\n/g);
+        return VariableProcessor.getCustomVariablesInFile(editor.document);
+    }
+
+    public static getCustomVariablesInFile(document: TextDocument): Map<string, string> {
+        let variables = new Map<string, string>();
+
+        let text = document.getText();
+        let lines: string[] = text.split(/\r?\n/g);
         lines.forEach(line => {
             let match: RegExpExecArray;
             if (match = Constants.VariableDefinitionRegex.exec(line)) {
@@ -365,5 +414,72 @@ export class VariableProcessor {
         });
 
         return variables;
+    }
+
+    public static getRequestVariablesInCurrentFile(activeOnly: boolean = true): Map<string, RequestVariableCacheValue> {
+        let editor = window.activeTextEditor;
+        if (!editor || !editor.document) {
+            return new Map<string, RequestVariableCacheValue>();
+        }
+
+        return VariableProcessor.getRequestVariablesInFile(editor.document, activeOnly);
+    }
+
+    public static getRequestVariablesInFile(document: TextDocument, activeOnly: boolean = true): Map<string, RequestVariableCacheValue> {
+        let variables = new Map<string, RequestVariableCacheValue>();
+
+        let text = document.getText();
+        let lines: string[] = text.split(/\r?\n/g);
+        let documentUri = document.uri.toString();
+        lines.forEach(line => {
+            let match: RegExpExecArray;
+            if (match = Constants.RequestVariableDefinitionRegex.exec(line)) {
+                let key = match[1];
+                const response = RequestVariableCache.get(new RequestVariableCacheKey(key, documentUri));
+                if (!activeOnly || response) {
+                    variables.set(key, response);
+                }
+            }
+        });
+
+        return variables;
+    }
+
+    public static async getAllVariablesDefinitions(document: TextDocument): Promise<Map<string, VariableType[]>> {
+        const requestVariables = VariableProcessor.getRequestVariablesInFile(document, false);
+        const fileVariables = VariableProcessor.getCustomVariablesInFile(document);
+        const environmentVariables = await EnvironmentController.getCustomVariables();
+
+        const variableDefinitions = new Map<string, VariableType[]>();
+
+        // Request variables in file
+        requestVariables.forEach((val, key) => {
+            if (variableDefinitions.has(key)) {
+                variableDefinitions.get(key).push(VariableType.Request);
+            } else {
+                variableDefinitions.set(key, [VariableType.Request]);
+            }
+        });
+
+        // Normal file variables
+        fileVariables.forEach((val, key) => {
+            variableDefinitions.set(key, [VariableType.File]);
+        });
+
+        // Environment variables
+        environmentVariables.forEach((val, key) => {
+            if (variableDefinitions.has(key)) {
+                variableDefinitions.get(key).push(VariableType.Environment);
+            } else {
+                variableDefinitions.set(key, [VariableType.Environment]);
+            }
+        });
+
+
+        return variableDefinitions;
+    }
+
+    private static escapeRegExp(str: string): string {
+        return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
     }
 }

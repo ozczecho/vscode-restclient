@@ -6,7 +6,7 @@ import { SerializedHttpRequest } from '../models/httpRequest';
 import { HistoryQuickPickItem } from '../models/historyQuickPickItem';
 import { trace } from "../decorator";
 import { EOL } from 'os';
-import * as fs from 'fs';
+import * as fs from 'fs-extra';
 import * as moment from 'moment';
 
 let tmp = require('tmp');
@@ -59,7 +59,7 @@ export class HistoryController {
                 .then(async function (btn) {
                     if (btn) {
                         if (btn.title === 'Yes') {
-                            await PersistUtility.serializeToHistoryFile([]);
+                            await PersistUtility.clearRequests();
                             window.showInformationMessage('Request history has been cleared');
                         }
                     }

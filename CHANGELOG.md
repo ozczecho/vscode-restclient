@@ -1,3 +1,25 @@
+## 0.18.2 (2018/4/17)
+* __Feature__: [Add system variable `datetime` to generate a _ISO8601_ or _RFC1123_ format datetime](https://github.com/Huachao/vscode-restclient/issues/180)
+* __Bug Fix__: [Allow request variable resolving whole xml document in response/request body](https://github.com/Huachao/vscode-restclient/issues/188)
+* __Bug Fix__: [Fix only one request is allowed per line](https://github.com/Huachao/vscode-restclient/issues/189)
+* __Bug Fix__: [Relative certificate path resolving not working](https://github.com/Huachao/vscode-restclient/issues/190)
+* __Improvement__: [Restricting language services to local files](https://github.com/Huachao/vscode-restclient/pull/187) ([@lostintangent](https://github.com/lostintangent))
+* __Improvement__: [Modify not sent request variable diagnostic level from Error to Information](https://github.com/Huachao/vscode-restclient/issues/184)
+
+## 0.18.1 (2018/3/30)
+* __Bug Fix__: Fix auto autocompletion not working after introducing request variables
+
+## 0.18.0 (2018/3/29)
+* __Feature__: [Add request variable support to provide the possibility to extract values from response](https://github.com/Huachao/vscode-restclient/pull/140) ([@cbrevik](https://github.com/cbrevik))
+* __Feature__: [Add indentation based response folding in webview](https://github.com/Huachao/vscode-restclient/issues/157)
+* __Feature__: [Add option to preview response in current active view column](https://github.com/Huachao/vscode-restclient/issues/172)
+* __Bug Fix__: [Fix JSON response zero fractions removed error when formatting](https://github.com/Huachao/vscode-restclient/issues/171)
+* __Bug Fix__: [Fix excluding hosts w/o ports bug](https://github.com/Huachao/vscode-restclient/pull/176) ([@realskim](https://github.com/realskim))
+* __Bug Fix__: Retrieve `enableTelemetry` setting from `rest-client` section
+* __Improvement__: [Adding Visual Studio Live Share support - Document Link Provider](https://github.com/Huachao/vscode-restclient/pull/174) ([@lostintangent](https://github.com/lostintangent))
+* __Improvement__: [Allow specifying $aadToken audience](https://github.com/Huachao/vscode-restclient/pull/161) ([@flanakin](https://github.com/flanakin/))
+* __Improvement__: Change the preview url suffix to `.html`
+
 ## 0.17.0 (2018/1/30)
 * __Feature__: [Add Azure Active Directory Support](https://github.com/Huachao/vscode-restclient/pulls/150) ([@flanakin](https://github.com/flanakin/))
 * __Feature__: [Highlight JSON/XML request body automatically](https://github.com/Huachao/vscode-restclient/issues/135)

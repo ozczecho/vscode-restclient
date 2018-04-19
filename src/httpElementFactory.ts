@@ -1,6 +1,6 @@
 "use strict";
 
-import { SnippetString } from 'vscode';
+import { SnippetString, MarkdownString } from 'vscode';
 import { EnvironmentController } from './controllers/environmentController';
 import { HttpElement, ElementType } from './models/httpElement';
 import { PersistUtility } from './persistUtility';
@@ -99,6 +99,12 @@ export class HttpElementFactory {
             Constants.TimeStampVariableDescription,
             new SnippetString(`{{$\${name:${Constants.TimeStampVariableName.slice(1)}}}}`)));
         originalElements.push(new HttpElement(
+            Constants.DateTimeVariableName,
+            ElementType.SystemVariable,
+            null,
+            Constants.DateTimeVariableNameDescription,
+            new SnippetString(`{{$\${name:${Constants.DateTimeVariableName.slice(1)}} \${1|rfc1123,iso8601|}}}`)));
+        originalElements.push(new HttpElement(
             Constants.RandomInt,
             ElementType.SystemVariable,
             null,
@@ -114,13 +120,20 @@ export class HttpElementFactory {
         // add environment custom variables
         let customVariables = await EnvironmentController.getCustomVariables();
         for (let [variableName, variableValue] of customVariables) {
-            originalElements.push(new HttpElement(variableName, ElementType.EnvironmentCustomVariable, null, `Value: ${variableValue}`, new SnippetString(`{{${variableName}}}`)));
+            originalElements.push(new HttpElement(variableName, ElementType.EnvironmentCustomVariable, null, new MarkdownString(`Value: \`${variableValue}\``), new SnippetString(`{{${variableName}}}`)));
         }
 
         // add file custom variables
         let fileVariables = VariableProcessor.getCustomVariablesInCurrentFile();
         for (let [variableName, variableValue] of fileVariables) {
-            originalElements.push(new HttpElement(variableName, ElementType.FileCustomVariable, '^\\s*[^@]', `Value: ${variableValue}`, new SnippetString(`{{${variableName}}}`)));
+            originalElements.push(new HttpElement(variableName, ElementType.FileCustomVariable, '^\\s*[^@]', new MarkdownString(`Value: \`${variableValue}\``), new SnippetString(`{{${variableName}}}`)));
+        }
+
+        // add request variables
+        let requestVariables = VariableProcessor.getRequestVariablesInCurrentFile(false);
+        for (let [variableName, variableValue] of requestVariables) {
+            const value = new MarkdownString(`Value: Request Variable ${variableName}${variableValue ? '' : ' *(Inactive)*'}`);
+            originalElements.push(new HttpElement(variableName, ElementType.RequestCustomVariable, '^\\s*[^@]', value, new SnippetString(`{{${variableName}.\${1|request,response|}.\${2|headers,body|}.\${3:Header Name, JSONPath or XPath}}}`)));
         }
 
         // add urls from history
@@ -145,11 +158,11 @@ export class HttpElementFactory {
 
         if (elements.length === 0) {
             elements = originalElements.filter(e => !e.prefix);
-        } else if (elements.every(e => e.type === ElementType.FileCustomVariable)) {
+        } else if (elements.every(e => e.type === ElementType.FileCustomVariable || e.type === ElementType.RequestCustomVariable)) {
             elements = elements.concat(originalElements.filter(e => !e.prefix));
         } else {
             // add global/custom variables anyway
-            originalElements.filter(e => !e.prefix && (e.type === ElementType.SystemVariable || e.type === ElementType.EnvironmentCustomVariable || e.type === ElementType.FileCustomVariable)).forEach(element => {
+            originalElements.filter(e => !e.prefix && (e.type === ElementType.SystemVariable || e.type === ElementType.EnvironmentCustomVariable || e.type === ElementType.FileCustomVariable || e.type === ElementType.RequestCustomVariable)).forEach(element => {
                 elements.push(element);
             });
         }

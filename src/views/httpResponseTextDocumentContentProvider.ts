@@ -2,6 +2,7 @@
 
 import { Uri, extensions } from 'vscode';
 import { BaseTextDocumentContentProvider } from './baseTextDocumentContentProvider';
+import { Headers } from '../models/base';
 import { RestClientSettings } from '../models/configurationSettings';
 import { HttpResponse } from "../models/httpResponse";
 import { MimeUtility } from '../mimeUtility';
@@ -15,7 +16,8 @@ const autoLinker = require('autolinker');
 const hljs = require('highlight.js');
 
 export class HttpResponseTextDocumentContentProvider extends BaseTextDocumentContentProvider {
-    private static cssFilePath: string = path.join(extensions.getExtension(Constants.ExtensionId).extensionPath, Constants.CSSFolderName, Constants.CSSFileName);
+    private static cssFilePath: string = Uri.file(path.join(extensions.getExtension(Constants.ExtensionId).extensionPath, Constants.CSSFolderName, Constants.CSSFileName)).toString();
+    private static scriptFilePath: string = Uri.file(path.join(extensions.getExtension(Constants.ExtensionId).extensionPath, Constants.ScriptsFolderName, Constants.ScriptFileName)).toString();
 
     public constructor(public settings: RestClientSettings) {
         super();
@@ -27,7 +29,7 @@ export class HttpResponseTextDocumentContentProvider extends BaseTextDocumentCon
             if (response) {
                 let innerHtml: string;
                 let width = 2;
-                let contentType = response.getResponseHeaderValue("content-type");
+                let contentType = response.getHeader("content-type");
                 if (contentType) {
                     contentType = contentType.trim();
                 }
@@ -40,7 +42,7 @@ export class HttpResponseTextDocumentContentProvider extends BaseTextDocumentCon
                 }
                 return `
             <head>
-                <link rel="stylesheet" href="${HttpResponseTextDocumentContentProvider.cssFilePath}">
+                <link rel="stylesheet" type="text/css" href="${HttpResponseTextDocumentContentProvider.cssFilePath}">
                 ${this.getSettingsOverrideStyles(width)}
             </head>
             <body>
@@ -50,6 +52,7 @@ export class HttpResponseTextDocumentContentProvider extends BaseTextDocumentCon
                         : this.addUrlLinks(innerHtml)}
                     <a id="scroll-to-top" role="button" aria-label="scroll to top" onclick="scroll(0,0)"><span class="icon"></span></a>
                 </div>
+                <script type="text/javascript" src="${HttpResponseTextDocumentContentProvider.scriptFilePath}" charset="UTF-8"></script>
             </body>`;
             }
         }
@@ -65,7 +68,7 @@ export class HttpResponseTextDocumentContentProvider extends BaseTextDocumentCon
 ${HttpResponseTextDocumentContentProvider.formatHeaders(request.headers)}`;
             code += hljs.highlight('http', requestNonBodyPart + '\r\n').value;
             if (request.body) {
-                let requestContentType = request.getRequestHeaderValue("content-type");
+                let requestContentType = request.getHeader("content-type");
                 if (typeof request.body !== 'string') {
                     request.body = 'NOTE: Request Body From File Not Shown';
                 }
@@ -89,7 +92,7 @@ ${HttpResponseTextDocumentContentProvider.formatHeaders(response.headers)}`;
         }
 
         if (previewOption !== PreviewOption.Headers) {
-            let responseContentType = response.getResponseHeaderValue("content-type");
+            let responseContentType = response.getHeader("content-type");
             let responseBodyPart = `${ResponseFormatUtility.FormatBody(response.body, responseContentType, this.settings.suppressResponseBodyContentTypeValidationWarning)}`;
             if (this.settings.disableHighlightResonseBodyForLargeResponse &&
                 response.bodySizeInBytes > this.settings.largeResponseBodySizeLimitInMB * 1024 * 1024) {
@@ -116,11 +119,17 @@ ${HttpResponseTextDocumentContentProvider.formatHeaders(response.headers)}`;
             this.settings.fontWeight ? `font-weight: ${this.settings.fontWeight};` : '',
             '}',
             'code .line {',
-            `padding-left: calc(${width}ch + 18px );`,
+            `padding-left: calc(${width}ch + 20px );`,
             '}',
             'code .line:before {',
             `width: ${width}ch;`,
-            `margin-left: calc(-${width}ch + -27px );`,
+            `margin-left: calc(-${width}ch + -30px );`,
+            '}',
+            '.line .icon {',
+            `left: calc(${width}ch + 3px)`,
+            '}',
+            '.line.collapsed .icon {',
+            `left: calc(${width}ch + 3px)`,
             '}',
             '</style>'].join('\n');
     }
@@ -133,9 +142,16 @@ ${HttpResponseTextDocumentContentProvider.formatHeaders(response.headers)}`;
         code = code.split(/\r\n|\r|\n/);
         let max = (1 + code.length).toString().length;
 
+        const foldingRanges = this.getFoldingRange(code);
+
         code = code
             .map(function (line, i) {
-                return '<span class="line width-' + max + '" start="' + (1 + i) + '">' + line + '</span>';
+                const lineNum = i + 1;
+                const range = foldingRanges.has(lineNum)
+                    ? ` range-start="${foldingRanges.get(lineNum).start}" range-end="${foldingRanges.get(lineNum).end}"`
+                    : '';
+                const folding = foldingRanges.has(lineNum) ? '<span class="icon"></span>' : '';
+                return `<span class="line width-${max}" start="${lineNum}"${range}>${line}${folding}</span>`;
             })
             .join('\n');
         return code;
@@ -178,7 +194,33 @@ ${HttpResponseTextDocumentContentProvider.formatHeaders(response.headers)}`;
         });
     }
 
-    private static formatHeaders(headers: { [key: string]: string }): string {
+    private getFoldingRange(lines: string[]): Map<number, FoldingRange> {
+        const result = new Map<number, FoldingRange>();
+        const stack = [];
+
+        const leadingSpaceCount = lines
+            .map((line, index) => [index, line.search(/\S/)])
+            .filter(([, num]) => num !== -1);
+        for (const [index, [lineIndex, count]] of leadingSpaceCount.entries()) {
+            if (index === 0) {
+                continue;
+            }
+
+            const [prevLineIndex, prevCount] = leadingSpaceCount[index - 1];
+            if (prevCount < count) {
+                stack.push([prevLineIndex, prevCount]);
+            } else if (prevCount > count) {
+                let prev;
+                while ((prev = stack.slice(-1)[0]) && (prev[1] >= count)) {
+                    stack.pop();
+                    result.set(prev[0] + 1, new FoldingRange(prev[0] + 1, lineIndex));
+                }
+            }
+        }
+        return result;
+    }
+
+    private static formatHeaders(headers: Headers): string {
         let headerString = '';
         for (let header in headers) {
             if (headers.hasOwnProperty(header)) {
@@ -211,5 +253,10 @@ ${HttpResponseTextDocumentContentProvider.formatHeaders(response.headers)}`;
         } else {
             return null;
         }
+    }
+}
+
+class FoldingRange {
+    public constructor(public start: number, public end: number) {
     }
 }

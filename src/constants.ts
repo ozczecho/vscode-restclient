@@ -4,6 +4,8 @@ export const ExtensionId: string = 'humao.rest-client';
 export const AiKey: string = 'ad746e27-4a36-441c-8b94-5db178f81ae3';
 export const CSSFileName: string = 'rest-client.css';
 export const CSSFolderName: string = 'styles';
+export const ScriptFileName: string = 'main.js';
+export const ScriptsFolderName: string = 'scripts';
 export const ExtensionFolderName: string = '.rest-client';
 export const HistoryFileName: string = 'history.json';
 export const CookieFileName: string = 'cookie.json';
@@ -17,6 +19,8 @@ export const NoEnvironmentSelectedName: string = 'c0cfe680-4fcd-4b71-a4ba-8cfaee
 export const TimeStampVariableName = "$timestamp";
 export const TimeStampVariableDescription = "Add a number of milliseconds between 1970/1/1 UTC Time and now. \
  You can also provide the offset with current time in the format {{$timestamp number string}}";
+export const DateTimeVariableName = "$datetime";
+export const DateTimeVariableNameDescription = "Add a datetime string in either ISO8601 or RFC1322 format";
 export const GuidVariableName = "$guid";
 export const GuidVariableDescription = "Add a RFC 4122 v4 UUID";
 export const RandomInt = "$randomInt";
@@ -35,11 +39,7 @@ export const AzureActiveDirectoryForceNewOption = "new";
 export const AzureActiveDirectoryDefaultTenantId = "common";
 export const AzureActiveDirectoryDefaultDisplayName = "Default Directory";
 export const AzureClouds = {
-    ppe: {
-        aad: "https://login.windows-ppe.net/",  // for testing purposes only
-        arm: "https://api-dogfood.resources.windows-int.net/",
-        armAudience: "https://management.azure.com/",
-    },
+    // default cloud must be first
     public: {
         aad: "https://login.microsoftonline.com/",
         arm: "https://management.azure.com/",
@@ -56,8 +56,18 @@ export const AzureClouds = {
         aad: "https://login.microsoftonline.us/",
         arm: "https://management.usgovcloudapi.net/",
     },
+    ppe: {
+        aad: "https://login.windows-ppe.net/",  // for testing purposes only
+        arm: "https://api-dogfood.resources.windows-int.net/",
+        armAudience: "https://management.azure.com/",
+    },
 };
 
 export const CommentIdentifiersRegex: RegExp = /^\s*(#|\/{2})/;
 
 export const VariableDefinitionRegex: RegExp = /^\s*@([^\s=]+)\s*=\s*(.+)\s*$/;
+
+export const RequestVariableDefinitionWithNameRegexFactory = (name: string, flags?: string): RegExp =>
+    new RegExp(`^\\s*(?:#{1,}|\\/{2,})\\s+@name\\s+(${name})\\s*$`, flags);
+
+export const RequestVariableDefinitionRegex: RegExp = RequestVariableDefinitionWithNameRegexFactory("\\w+", "m");

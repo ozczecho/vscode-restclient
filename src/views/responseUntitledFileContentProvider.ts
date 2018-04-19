@@ -11,18 +11,20 @@ export class UntitledFileContentProvider {
         createNewFile: boolean,
         autoSetLanguage: boolean,
         additionalInfo: boolean,
-        suppressValidation: boolean
+        suppressValidation: boolean,
+        previewResponseInActiveColumn: boolean
     ) {
 
         const language = autoSetLanguage ? UntitledFileContentProvider.languageFromContentType(response) : 'http';
         const content = UntitledFileContentProvider.formatResponse(response, language, additionalInfo, autoSetLanguage, suppressValidation);
+        const column = previewResponseInActiveColumn ? ViewColumn.Active : ViewColumn.Two;
         workspace.openTextDocument({ 'language': language, 'content': content }).then(document => {
-            window.showTextDocument(document, { viewColumn: ViewColumn.Two, preserveFocus: false, preview: !createNewFile });
+            window.showTextDocument(document, { viewColumn: column, preserveFocus: false, preview: !createNewFile });
         });
     }
 
     private static languageFromContentType(response: HttpResponse): string {
-        let contentType = response.getResponseHeaderValue("Content-Type");
+        let contentType = response.getHeader("Content-Type");
         if (!contentType) {
             return 'http';
         };
@@ -78,7 +80,7 @@ export class UntitledFileContentProvider {
                 headers += `${header}: ${value}${EOL}`;
             }
         }
-        let body = ResponseFormatUtility.FormatBody(response.body, response.getResponseHeaderValue("content-type"), suppressValidation);
+        let body = ResponseFormatUtility.FormatBody(response.body, response.getHeader("content-type"), suppressValidation);
         return { responseStatusLine, headers, body };
     }
 

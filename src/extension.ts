@@ -15,7 +15,10 @@ import { CustomVariableReferencesCodeLensProvider } from './customVariableRefere
 import { HttpCodeLensProvider } from './httpCodeLensProvider';
 import { RequestBodyDocumentLinkProvider } from './documentLinkProvider';
 import { HttpDocumentSymbolProvider } from './httpDocumentSymbolProvider';
+import { RequestVariableHoverProvider } from './requestVariableHoverProvider';
+import { RequestVariableCompletionItemProvider } from "./requestVariableCompletionItemProvider";
 import { VariableProcessor } from './variableProcessor';
+import { VariableDiagnosticsProvider } from "./variableDiagnosticsProvider";
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -42,18 +45,33 @@ export async function activate(context: ExtensionContext) {
     context.subscriptions.push(commands.registerCommand('rest-client.switch-environment', () => environmentController.switchEnvironment()));
     context.subscriptions.push(commands.registerCommand('rest-client.clear-aad-token-cache', () => VariableProcessor.clearAadTokenCache()));
     context.subscriptions.push(commands.registerCommand('rest-client._openDocumentLink', args => {
-        workspace.openTextDocument(Uri.file(args.path)).then(window.showTextDocument, error => {
+        workspace.openTextDocument(Uri.parse(args.path)).then(window.showTextDocument, error => {
             window.showErrorMessage(error.message);
         });
     }));
-    context.subscriptions.push(languages.registerCompletionItemProvider('http', new HttpCompletionItemProvider()));
-    context.subscriptions.push(languages.registerHoverProvider('http', new CustomVariableHoverProvider()));
-    context.subscriptions.push(languages.registerCodeLensProvider('http', new HttpCodeLensProvider()));
-    context.subscriptions.push(languages.registerCodeLensProvider('http', new CustomVariableReferencesCodeLensProvider()));
-    context.subscriptions.push(languages.registerDocumentLinkProvider('http', new RequestBodyDocumentLinkProvider()));
-    context.subscriptions.push(languages.registerDefinitionProvider('http', new CustomVariableDefinitionProvider()));
-    context.subscriptions.push(languages.registerReferenceProvider('http', new CustomVariableReferenceProvider()));
-    context.subscriptions.push(languages.registerDocumentSymbolProvider('http', new HttpDocumentSymbolProvider()));
+
+    const documentSelector = [
+        { language: 'http', scheme: 'file' },
+        { language: 'http', scheme: 'untitled' },
+    ];
+
+    context.subscriptions.push(languages.registerCompletionItemProvider(documentSelector, new HttpCompletionItemProvider()));
+    context.subscriptions.push(languages.registerCompletionItemProvider(documentSelector, new RequestVariableCompletionItemProvider(), '.'));
+    context.subscriptions.push(languages.registerHoverProvider(documentSelector, new CustomVariableHoverProvider()));
+    context.subscriptions.push(languages.registerHoverProvider(documentSelector, new RequestVariableHoverProvider()));
+    context.subscriptions.push(languages.registerCodeLensProvider(documentSelector, new HttpCodeLensProvider()));
+    context.subscriptions.push(languages.registerCodeLensProvider(documentSelector, new CustomVariableReferencesCodeLensProvider()));
+    context.subscriptions.push(languages.registerDocumentLinkProvider(documentSelector, new RequestBodyDocumentLinkProvider()));
+    context.subscriptions.push(languages.registerDefinitionProvider(documentSelector, new CustomVariableDefinitionProvider()));
+    context.subscriptions.push(languages.registerReferenceProvider(documentSelector, new CustomVariableReferenceProvider()));
+    context.subscriptions.push(languages.registerDocumentSymbolProvider(documentSelector, new HttpDocumentSymbolProvider()));
+
+    const diagnosticsProviders = new VariableDiagnosticsProvider();
+    workspace.onDidOpenTextDocument(diagnosticsProviders.checkVariables, diagnosticsProviders, context.subscriptions);
+    workspace.onDidCloseTextDocument((textDocument) => {
+        diagnosticsProviders.deleteDocumentFromDiagnosticCollection(textDocument);
+    }, null, context.subscriptions);
+    workspace.onDidSaveTextDocument(diagnosticsProviders.checkVariables, diagnosticsProviders, context.subscriptions);
 }
 
 // this method is called when your extension is deactivated

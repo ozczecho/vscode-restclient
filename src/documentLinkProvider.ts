@@ -3,7 +3,7 @@
 import { DocumentLink, DocumentLinkProvider, TextDocument, Range, Position, Uri, CancellationToken } from 'vscode';
 import { getWorkspaceRootPath } from './workspaceUtility';
 import * as path from 'path';
-import * as fs from 'fs';
+import * as fs from 'fs-extra';
 
 export class RequestBodyDocumentLinkProvider implements DocumentLinkProvider {
 
@@ -11,7 +11,7 @@ export class RequestBodyDocumentLinkProvider implements DocumentLinkProvider {
 
     public provideDocumentLinks(document: TextDocument, _token: CancellationToken): DocumentLink[] {
         const results: DocumentLink[] = [];
-        const base = path.dirname(document.uri.fsPath);
+        const base = path.dirname(document.uri.toString());
         const text = document.getText();
 
         let lines: string[] = text.split(/\r?\n/g);

@@ -8,7 +8,7 @@ import { PersistUtility } from '../persistUtility';
 import { RestClientSettings } from '../models/configurationSettings';
 import { trace } from "../decorator";
 import * as Constants from '../constants';
-import * as fs from 'fs';
+import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as os from 'os';
 
@@ -34,8 +34,8 @@ export class ResponseController {
             let fullResponse = this.getFullResponseString(response);
             let filePath = path.join(ResponseController.responseSaveFolderPath, `Response-${Date.now()}.http`);
             try {
-                await PersistUtility.createFileIfNotExistsAsync(filePath);
-                fs.writeFileSync(filePath, fullResponse);
+                await PersistUtility.ensureFileAsync(filePath);
+                await fs.writeFile(filePath, fullResponse);
                 window.showInformationMessage(`Saved to ${filePath}`, { title: 'Open' }, { title: 'Copy Path' }).then(function (btn) {
                     if (btn) {
                         if (btn.title === 'Open') {
@@ -58,13 +58,13 @@ export class ResponseController {
         }
         let response = ResponseStore.get(uri.toString());
         if (response !== undefined) {
-            let contentType = response.getResponseHeaderValue("content-type");
+            let contentType = response.getHeader("content-type");
             let extension = this.getExtension(contentType);
             let fileName = !extension ? `Response-${Date.now()}` : `Response-${Date.now()}.${extension}`;
             let filePath = path.join(ResponseController.responseBodySaveFolderPath, fileName);
             try {
-                await PersistUtility.createFileIfNotExistsAsync(filePath);
-                fs.writeFileSync(filePath, response.bodyStream);
+                await PersistUtility.ensureFileAsync(filePath);
+                await fs.writeFile(filePath, response.bodyStream);
                 window.showInformationMessage(`Saved to ${filePath}`, { title: 'Open' }, { title: 'Copy Path' }).then(function (btn) {
                     if (btn) {
                         if (btn.title === 'Open') {
