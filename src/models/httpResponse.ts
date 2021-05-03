@@ -1,9 +1,9 @@
 "use strict";
 
+import { getHeader } from '../utils/misc';
 import { Headers } from "./base";
 import { HttpRequest } from "./httpRequest";
 import { HttpResponseTimingPhases } from './httpResponseTimingPhases';
-import { getHeader } from '../misc';
 
 export class HttpResponse {
     public constructor(
@@ -13,10 +13,9 @@ export class HttpResponse {
         public headers: Headers,
         public body: string,
         public elapsedMillionSeconds: number,
-        public requestUrl: string,
         public bodySizeInBytes: number,
         public headersSizeInBytes: number,
-        public bodyStream: Buffer,
+        public bodyBuffer: Buffer,
         public timingPhases: HttpResponseTimingPhases,
         public request: HttpRequest) {
     }
