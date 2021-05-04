@@ -1,7 +1,0 @@
-out
-node_modules
-dist
-*.vsix
-
-# Logs
-npm-debug.log*
